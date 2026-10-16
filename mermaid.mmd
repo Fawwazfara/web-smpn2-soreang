@@ -1,0 +1,178 @@
+%% ERD Sistem Absensi & Manajemen Kehadiran Guru - SMPN Soreang
+%% Versi perbaikan. Catatan penting:
+%% - Absen guru = PER SESI/PELAJARAN (guru hadir saat mengabsen pelajarannya).
+%% - "Live camera": DB hanya menyimpan path foto + metadata (waktu jepret, ip, user_agent, sumber).
+%%   Penegakan "tidak boleh upload" dilakukan di backend: endpoint HANYA menerima hasil capture
+%%   dari kamera (getUserMedia/canvas), tidak ada input file/galeri, lalu ditolak bila terindikasi upload.
+%% - Unique: ABSEN_GURU(sesi_id, guru_id), ABSEN_SISWA(sesi_id, siswa_id),
+%%   JADWAL_SLOT(versi_id, hari, jam_pelajaran_id, kelas_id), HARI_LIBUR(tanggal).
+
+erDiagram
+    USERS {
+        bigint id PK
+        string username UK "NIP / NUPTK / kode lain"
+        string nama
+        string email UK "opsional, untuk reset password"
+        string password "hash"
+        string role "guru atau admin"
+        boolean wajib_ganti_password
+        boolean aktif
+    }
+
+    GURU_PIKET {
+        bigint id PK
+        bigint user_id FK
+        int hari "1=Senin .. 6=Sabtu"
+        bigint tahun_ajaran_id FK
+    }
+
+    TAHUN_AJARAN {
+        bigint id PK
+        string nama
+        string semester "Ganjil atau Genap"
+        date tanggal_mulai
+        date tanggal_selesai
+        boolean aktif
+    }
+
+    KELAS {
+        bigint id PK
+        string nama
+        int tingkat
+        bigint tahun_ajaran_id FK
+        bigint wali_kelas_id FK
+    }
+
+    SISWA {
+        bigint id PK
+        string nis UK
+        string nama
+        bigint kelas_id FK
+        string no_hp_ortu
+        boolean aktif
+    }
+
+    MAPEL {
+        bigint id PK
+        string kode UK
+        string nama
+    }
+
+    JAM_PELAJARAN {
+        bigint id PK
+        int jam_ke
+        time mulai
+        time selesai
+        string kelompok_hari "senin-kamis atau jumat"
+    }
+
+    JADWAL_VERSI {
+        bigint id PK
+        string nama
+        date berlaku_mulai
+        date berlaku_sampai
+        string status "draf, aktif, arsip"
+    }
+
+    JADWAL_SLOT {
+        bigint id PK
+        bigint versi_id FK
+        int hari
+        bigint jam_pelajaran_id FK
+        bigint kelas_id FK
+        bigint mapel_id FK
+        bigint guru_id FK
+    }
+
+    HARI_LIBUR {
+        bigint id PK
+        date tanggal UK
+        string keterangan
+    }
+
+    SESI {
+        bigint id PK
+        date tanggal
+        bigint kelas_id FK
+        bigint jam_pelajaran_id FK
+        bigint mapel_id FK
+        bigint guru_id FK "guru terjadwal"
+        bigint guru_pengganti_id FK "boleh kosong"
+        bigint slot_id FK
+        string status "terjadwal, berlangsung, selesai, dibatalkan, libur"
+        string alasan "alasan batal / guru pengganti"
+    }
+
+    ABSEN_GURU {
+        bigint id PK
+        bigint sesi_id FK
+        bigint guru_id FK "guru yang benar-benar mengajar"
+        datetime waktu "waktu server"
+        datetime waktu_ambil "waktu jepret di perangkat"
+        string foto_path
+        string sumber "selalu 'live'"
+        string ip_address
+        string user_agent
+        string status "tepat waktu, terlambat"
+        string catatan
+        bigint diverifikasi_oleh FK
+    }
+
+    ABSEN_SISWA {
+        bigint id PK
+        bigint sesi_id FK
+        bigint siswa_id FK
+        string status "H, S, I, A"
+        string catatan
+        string bukti_path "bukti untuk S/I, boleh kosong"
+        bigint dicatat_oleh FK
+        datetime waktu
+    }
+
+    PENGUMUMAN {
+        bigint id PK
+        string judul
+        string slug UK
+        text ringkasan
+        text isi
+        string gambar_path
+        date tanggal
+        string status "draf atau terbit"
+        bigint dibuat_oleh FK
+    }
+
+    AUDIT_LOG {
+        bigint id PK
+        bigint user_id FK
+        string aksi
+        string entitas
+        bigint entitas_id
+        json data_lama
+        json data_baru
+        datetime waktu
+    }
+
+    USERS ||--o{ GURU_PIKET : "jadi piket"
+    TAHUN_AJARAN ||--o{ GURU_PIKET : "periode piket"
+    USERS ||--o{ KELAS : "wali kelas"
+    TAHUN_AJARAN ||--o{ KELAS : "memiliki"
+    KELAS ||--o{ SISWA : "berisi"
+    JADWAL_VERSI ||--o{ JADWAL_SLOT : "memuat"
+    KELAS ||--o{ JADWAL_SLOT : "dijadwalkan"
+    MAPEL ||--o{ JADWAL_SLOT : "diajarkan"
+    USERS ||--o{ JADWAL_SLOT : "mengajar"
+    JAM_PELAJARAN ||--o{ JADWAL_SLOT : "slot jam"
+    JADWAL_SLOT ||--o{ SESI : "menghasilkan"
+    KELAS ||--o{ SESI : "berlangsung di"
+    MAPEL ||--o{ SESI : "materi"
+    JAM_PELAJARAN ||--o{ SESI : "jam"
+    USERS ||--o{ SESI : "guru terjadwal"
+    USERS ||--o{ SESI : "guru pengganti"
+    SESI ||--o{ ABSEN_GURU : "dicatat"
+    SESI ||--o{ ABSEN_SISWA : "dicatat"
+    USERS ||--o{ ABSEN_GURU : "mengabsen"
+    USERS ||--o{ ABSEN_GURU : "verifikasi"
+    SISWA ||--o{ ABSEN_SISWA : "hadir"
+    USERS ||--o{ ABSEN_SISWA : "mencatat"
+    USERS ||--o{ PENGUMUMAN : "menulis"
+    USERS ||--o{ AUDIT_LOG : "melakukan"
