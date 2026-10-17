@@ -1,11 +1,17 @@
-%% ERD Sistem Absensi & Manajemen Kehadiran Guru - SMPN Soreang
+%% ERD Sistem Absensi & Manajemen Kehadiran - SMPN Soreang
 %% Versi perbaikan. Catatan penting:
-%% - Absen guru = PER SESI/PELAJARAN (guru hadir saat mengabsen pelajarannya).
+%% - Role: admin, guru, guru_piket, kepsek (read-only). Kolom jenis_pegawai (guru / tenaga_kependidikan) untuk role guru.
+%%   Satu orang boleh punya 2 akun (mis. akun guru + akun admin). Kepsek read-only: monitoring menyeluruh, tidak input.
+%% - Absen harian (semua pegawai kecuali admin) TERPISAH dari absen sesi kelas.
 %% - "Live camera": DB hanya menyimpan path foto + metadata (waktu jepret, ip, user_agent, sumber).
 %%   Penegakan "tidak boleh upload" dilakukan di backend: endpoint HANYA menerima hasil capture
 %%   dari kamera (getUserMedia/canvas), tidak ada input file/galeri, lalu ditolak bila terindikasi upload.
-%% - Unique: ABSEN_GURU(sesi_id, guru_id), ABSEN_SISWA(sesi_id, siswa_id),
-%%   JADWAL_SLOT(versi_id, hari, jam_pelajaran_id, kelas_id), HARI_LIBUR(tanggal).
+%% - Penggantian absen: guru tidak bisa hadir -> koordinasi WA ke guru piket -> guru generate KODE_PENGGANTI
+%%   (per sesi, ada masa kadaluarsa). Guru piket input kode untuk membuka (unlock) sesi tersebut saja.
+%% - Konfirmasi bukti S/I: link token di ABSEN_SISWA, berlaku 1 minggu, sekali pakai; status absen tetap.
+%% - Unique: ABSEN_GURU(sesi_id, guru_id), ABSEN_SISWA(sesi_id, siswa_id), ABSEN_HARIAN(user_id, tanggal),
+%%   JADWAL_SLOT(versi_id, hari, jam_pelajaran_id, kelas_id), HARI_LIBUR(tanggal),
+%%   GURU_PIKET(user_id, hari, tahun_ajaran_id), KODE_PENGGANTI(kode).
 
 erDiagram
     USERS {
@@ -14,7 +20,8 @@ erDiagram
         string nama
         string email UK "opsional, untuk reset password"
         string password "hash"
-        string role "guru atau admin"
+        string role "admin, guru, guru_piket, atau kepsek"
+        string jenis_pegawai "guru atau tenaga_kependidikan (untuk role guru)"
         boolean wajib_ganti_password
         boolean aktif
     }
@@ -103,6 +110,20 @@ erDiagram
         string alasan "alasan batal / guru pengganti"
     }
 
+    ABSEN_HARIAN {
+        bigint id PK
+        bigint user_id FK
+        date tanggal
+        datetime waktu_masuk "waktu server"
+        datetime waktu_ambil "waktu jepret di perangkat"
+        string foto_path
+        string sumber "selalu 'live'"
+        string ip_address
+        string user_agent
+        string status "tepat waktu, terlambat"
+        string keterangan
+    }
+
     ABSEN_GURU {
         bigint id PK
         bigint sesi_id FK
@@ -126,6 +147,36 @@ erDiagram
         string catatan
         string bukti_path "bukti untuk S/I, boleh kosong"
         bigint dicatat_oleh FK
+        datetime waktu
+        string status_konfirmasi "tidak perlu, menunggu, terkonfirmasi, kadaluarsa"
+        string konfirmasi_token UK "token link ke ortu, boleh kosong"
+        datetime token_berlaku_sampai "1 minggu, boleh kosong"
+        datetime bukti_diunggah_pada
+        string keterangan_konfirmasi
+    }
+
+    KODE_PENGGANTI {
+        bigint id PK
+        bigint sesi_id FK
+        string kode UK
+        bigint dibuat_oleh FK "guru yang tidak bisa hadir"
+        bigint diklaim_oleh FK "guru piket, boleh kosong"
+        datetime berlaku_sampai
+        datetime diklaim_pada "boleh kosong"
+        string status "aktif, terpakai, kadaluarsa"
+    }
+
+    NOTIFIKASI_WA {
+        bigint id PK
+        bigint siswa_id FK "boleh kosong"
+        bigint absen_siswa_id FK "boleh kosong"
+        bigint user_id FK "boleh kosong"
+        string tujuan "nomor WhatsApp"
+        string tipe "alfa, sakit, izin, pengganti"
+        text pesan
+        string status "antrian, terkirim, gagal"
+        string provider "fonnte"
+        string provider_message_id
         datetime waktu
     }
 
@@ -152,7 +203,7 @@ erDiagram
         datetime waktu
     }
 
-    USERS ||--o{ GURU_PIKET : "jadi piket"
+    USERS ||--o{ GURU_PIKET : "jadwal piket"
     TAHUN_AJARAN ||--o{ GURU_PIKET : "periode piket"
     USERS ||--o{ KELAS : "wali kelas"
     TAHUN_AJARAN ||--o{ KELAS : "memiliki"
@@ -168,11 +219,18 @@ erDiagram
     JAM_PELAJARAN ||--o{ SESI : "jam"
     USERS ||--o{ SESI : "guru terjadwal"
     USERS ||--o{ SESI : "guru pengganti"
+    USERS ||--o{ ABSEN_HARIAN : "absen harian"
     SESI ||--o{ ABSEN_GURU : "dicatat"
     SESI ||--o{ ABSEN_SISWA : "dicatat"
     USERS ||--o{ ABSEN_GURU : "mengabsen"
     USERS ||--o{ ABSEN_GURU : "verifikasi"
     SISWA ||--o{ ABSEN_SISWA : "hadir"
     USERS ||--o{ ABSEN_SISWA : "mencatat"
+    SESI ||--o{ KODE_PENGGANTI : "kode untuk"
+    USERS ||--o{ KODE_PENGGANTI : "membuat kode"
+    USERS ||--o{ KODE_PENGGANTI : "klaim kode"
+    SISWA ||--o{ NOTIFIKASI_WA : "notifikasi"
+    ABSEN_SISWA ||--o{ NOTIFIKASI_WA : "notifikasi"
+    USERS ||--o{ NOTIFIKASI_WA : "notifikasi"
     USERS ||--o{ PENGUMUMAN : "menulis"
     USERS ||--o{ AUDIT_LOG : "melakukan"

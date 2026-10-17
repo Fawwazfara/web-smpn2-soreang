@@ -50,6 +50,9 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 
 ## Baca dulu
 - Selalu baca `docs/PRD.md` sebelum mulai. Jangan kerjakan fitur di luar PRD.
+- **WAJIB baca `docs/PRD.md` Bagian 9 (Keputusan Final), 10 (Belum Diputuskan), dan 11 (Aturan AI).**
+  - Bagian 9 = jangan diubah tanpa approval PM.
+  - Bagian 10 = belum diputuskan: **berhenti dan tanya PM**, jangan mengarang.
 - Skema database / ERD: `mermaid.mmd`.
 
 ## Aturan keras
