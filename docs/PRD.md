@@ -28,6 +28,7 @@ Ada **4 role**: `admin`, `guru`, `guru_piket`, dan `kepsek`. Role `guru` punya k
    - Monitoring seperlunya saja; **monitoring menyeluruh dialihkan ke role Kepsek**.
    - Rekapitulasi absensi siswa per kelas.
 7. **Landing Page CMS:** input informasi/pengumuman sekolah (judul, deskripsi, gambar).
+8. **Manajemen Akun Pengguna:** membuat & mengelola akun `guru`, `guru_piket`, dan `kepsek` (buat, ubah, hapus). Admin **tidak** membuat akun `admin` baru; admin pertama dibuat via seeder.
 
 ### B. Guru
 
@@ -145,6 +146,10 @@ Aturan berikut sudah final. AI/developer **tidak boleh** menambah, mengurangi, a
 10. **Blast WA (fonnte)** hanya untuk status **A, S, I**. Maksimal **1 blast per murid per hari**. Wajib **delay acak + rate limit**. Semua pengiriman **dicatat** di log notifikasi.
 11. **Kepsek read-only:** boleh melihat monitoring menyeluruh, **tidak boleh** input/ubah data.
 12. **Database:** perubahan skema **hanya** lewat migrasi baru; jangan edit migrasi lama; jangan drop tanpa approval PM. Acuan skema: `mermaid.mmd`.
+13. **Login:** satu halaman login memakai **NIP/NUPTK** (`username`) + password; redirect sesuai role.
+14. **Tanpa registrasi publik.** Akun tidak dibuat sendiri; **akun dibuat admin**. Admin pertama dibuat via **seeder**.
+15. **Hak buat akun:** admin boleh membuat akun `guru`, `guru_piket`, dan `kepsek`; admin **tidak boleh** membuat akun `admin` baru; kepsek (read-only) **tidak boleh** membuat akun apa pun.
+16. **`jenis_pegawai`** (`guru` / `tenaga_kependidikan`) wajib untuk akun ber-role `guru`, dikosongkan untuk role lain.
 
 ---
 
@@ -162,15 +167,17 @@ Untuk poin di bawah ini, AI/developer **harus berhenti dan bertanya ke PM**, **b
    *Usulan:* 6 karakter alfanumerik (tanpa huruf/angka ambigu), sekali pakai, hanya **guru pemilik sesi** yang boleh generate (guru piket tidak).
 5. **Aturan jam absen harian (tepat waktu/terlambat, jam pulang).**
    *Usulan:* satu absen masuk/hari; admin mengatur jam masuk + toleransi (mis. 07:00 + 15 menit) → status tepat waktu/terlambat. **Jam pulang belum ada** di v1.
-6. **Kredensial login tiap role.**
-   *Usulan:* guru & guru piket = NIP/NUPTK; admin & kepsek = username bebas/email. Satu halaman login, redirect sesuai role.
-7. **Siapa yang boleh membuat akun tiap role.**
-   *Usulan:* admin pertama via seeder; admin boleh membuat `guru`, `guru_piket`, dan `kepsek`; kepsek (read-only) tidak boleh membuat akun apa pun.
-8. **Token konfirmasi: 1 token per sesi atau per murid harian?**
+6. **Token konfirmasi: 1 token per sesi atau per murid harian?**
    *Usulan:* 1 token per (murid, tanggal); dipakai ulang bila murid S/I lagi hari itu; route publik `GET/POST /konfirmasi/{token}`.
-9. **Tipe `pengganti` di `NOTIFIKASI_WA`.**
+7. **Tipe `pengganti` di `NOTIFIKASI_WA`.**
    *Usulan:* tidak dipakai di v1 karena penggantian lewat WA manual; boleh dihapus dari log atau disimpan untuk fitur blast otomatis nanti. Butuh keputusan.
-10. **Harga/paket fonnte** menyesuaikan volume; dicek di dashboard fonnte sebelum implementasi.
+8. **Harga/paket fonnte** menyesuaikan volume; dicek di dashboard fonnte sebelum implementasi.
+9. **Paksa ganti password saat login pertama (`wajib_ganti_password`).**
+   *Usulan:* setelah login pertama, user wajib ganti password sebelum mengakses fitur lain; kolom `wajib_ganti_password` di-set `true` saat akun dibuat/di-reset oleh admin.
+10. **Alur reset / forgot password.**
+    *Usulan:* login memakai NIP sedangkan `email` opsional, jadi reset password self-service via email tidak selalu bisa. Alternatif: reset oleh admin (set password baru + `wajib_ganti_password`).
+11. **Cara penghapusan akun: hapus permanen atau nonaktifkan?**
+    *Usulan:* nonaktifkan (`aktif = false`) agar riwayat absen/jadwal tidak hilang, karena FK `users` di `sesi`, `jadwal_slot`, `absen_guru`, dan `guru_piket` bersifat `cascadeOnDelete`.
 
 ---
 

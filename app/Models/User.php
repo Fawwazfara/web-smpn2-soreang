@@ -17,6 +17,7 @@ use Illuminate\Notifications\Notifiable;
     'email',
     'password',
     'role',
+    'jenis_pegawai',
     'wajib_ganti_password',
     'aktif',
 ])]
