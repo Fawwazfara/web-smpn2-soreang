@@ -28,6 +28,7 @@ class UpdateUserRequest extends FormRequest
             'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($user?->id)],
             'nama' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
+            'no_wa' => ['nullable', 'string', 'max:20', Rule::requiredIf(fn () => $this->input('role') === 'guru_piket')],
             'role' => ['required', Rule::in(['guru', 'guru_piket', 'kepsek'])],
             'jenis_pegawai' => ['nullable', Rule::requiredIf(fn () => $this->input('role') === 'guru'), Rule::in(['guru', 'tenaga_kependidikan'])],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],

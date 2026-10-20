@@ -7,8 +7,10 @@
 %%   Penegakan "tidak boleh upload" dilakukan di backend: endpoint HANYA menerima hasil capture
 %%   dari kamera (getUserMedia/canvas), tidak ada input file/galeri, lalu ditolak bila terindikasi upload.
 %% - Penggantian absen: guru tidak bisa hadir -> koordinasi WA ke guru piket -> guru generate KODE_PENGGANTI
-%%   (per sesi, ada masa kadaluarsa). Guru piket input kode untuk membuka (unlock) sesi tersebut saja.
+%%   (per sesi, 6 digit numerik, berlaku sejak dibuat sampai jam pelajaran sesi selesai). Guru piket input kode
+%%   untuk membuka (unlock) sesi tersebut saja. Guru piket WAJIB punya no_wa agar tombol "Hubungi" membuka wa.me.
 %% - Konfirmasi bukti S/I: link token di ABSEN_SISWA, berlaku 1 minggu, sekali pakai; status absen tetap.
+%% - Blast WA real-time saat status A/S/I ditandai, dedupe 1x per murid per hari (log di NOTIFIKASI_WA).
 %% - Unique: ABSEN_GURU(sesi_id, guru_id), ABSEN_SISWA(sesi_id, siswa_id), ABSEN_HARIAN(user_id, tanggal),
 %%   JADWAL_SLOT(versi_id, hari, jam_pelajaran_id, kelas_id), HARI_LIBUR(tanggal),
 %%   GURU_PIKET(user_id, hari, tahun_ajaran_id), KODE_PENGGANTI(kode).
@@ -19,6 +21,7 @@ erDiagram
         string username UK "NIP / NUPTK / kode lain"
         string nama
         string email UK "opsional, untuk reset password"
+        string no_wa "nomor WhatsApp, wajib untuk guru_piket"
         string password "hash"
         string role "admin, guru, guru_piket, atau kepsek"
         string jenis_pegawai "guru atau tenaga_kependidikan (untuk role guru)"
@@ -158,10 +161,10 @@ erDiagram
     KODE_PENGGANTI {
         bigint id PK
         bigint sesi_id FK
-        string kode UK
+        string kode UK "6 digit numerik"
         bigint dibuat_oleh FK "guru yang tidak bisa hadir"
         bigint diklaim_oleh FK "guru piket, boleh kosong"
-        datetime berlaku_sampai
+        datetime berlaku_sampai "saat jam pelajaran sesi selesai"
         datetime diklaim_pada "boleh kosong"
         string status "aktif, terpakai, kadaluarsa"
     }
@@ -172,7 +175,7 @@ erDiagram
         bigint absen_siswa_id FK "boleh kosong"
         bigint user_id FK "boleh kosong"
         string tujuan "nomor WhatsApp"
-        string tipe "alfa, sakit, izin, pengganti"
+        string tipe "alfa, sakit, izin"
         text pesan
         string status "antrian, terkirim, gagal"
         string provider "fonnte"

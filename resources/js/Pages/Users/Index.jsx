@@ -20,6 +20,7 @@ const emptyUser = {
     username: '',
     nama: '',
     email: '',
+    no_wa: '',
     role: 'guru',
     jenis_pegawai: 'guru',
     password: '',
@@ -56,6 +57,7 @@ export default function Index({ users }) {
             username: user.username,
             nama: user.nama,
             email: user.email ?? '',
+            no_wa: user.no_wa ?? '',
             role: user.role,
             jenis_pegawai: user.jenis_pegawai ?? 'guru',
             password: '',
@@ -87,7 +89,7 @@ export default function Index({ users }) {
     };
 
     const destroy = (user) => {
-        if (confirm(`Hapus akun "${user.nama}"? Riwayat absen/jadwal terkait ikut terhapus.`)) {
+        if (confirm(`Nonaktifkan akun "${user.nama}"?`)) {
             router.delete(route('users.destroy', user.id), {
                 preserveScroll: true,
             });
@@ -131,6 +133,9 @@ export default function Index({ users }) {
                                             Email
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                            No. WA
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                                             Role
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -149,7 +154,7 @@ export default function Index({ users }) {
                                     {users.length === 0 && (
                                         <tr>
                                             <td
-                                                colSpan="7"
+                                                colSpan="8"
                                                 className="px-6 py-4 text-center text-sm text-gray-500"
                                             >
                                                 Belum ada pengguna.
@@ -167,6 +172,9 @@ export default function Index({ users }) {
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                                                 {user.email ?? '-'}
+                                            </td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                                {user.no_wa ?? '-'}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                                                 {roleLabels[user.role] ??
@@ -203,7 +211,7 @@ export default function Index({ users }) {
                                                     }
                                                     className="ms-4 text-red-600 hover:text-red-900"
                                                 >
-                                                    Hapus
+                                                    Nonaktifkan
                                                 </button>
                                             </td>
                                         </tr>
@@ -275,6 +283,32 @@ export default function Index({ users }) {
                                 message={errors.email}
                             />
                         </div>
+
+                        {data.role === 'guru_piket' && (
+                            <div>
+                                <InputLabel
+                                    htmlFor="no_wa"
+                                    value="No. WhatsApp (untuk tombol Hubungi)"
+                                />
+
+                                <TextInput
+                                    id="no_wa"
+                                    type="tel"
+                                    className="mt-1 block w-full"
+                                    value={data.no_wa}
+                                    onChange={(e) =>
+                                        setData('no_wa', e.target.value)
+                                    }
+                                    placeholder="628xxxxxxxxxx"
+                                    required
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.no_wa}
+                                />
+                            </div>
+                        )}
 
                         <div>
                             <InputLabel htmlFor="role" value="Role" />

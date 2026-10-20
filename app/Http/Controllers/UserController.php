@@ -23,7 +23,7 @@ class UserController extends Controller
             'users' => User::query()
                 ->where('role', '!=', 'admin')
                 ->orderBy('nama')
-                ->get(['id', 'username', 'nama', 'email', 'role', 'jenis_pegawai', 'aktif']),
+                ->get(['id', 'username', 'nama', 'email', 'no_wa', 'role', 'jenis_pegawai', 'aktif']),
         ]);
     }
 
@@ -37,6 +37,7 @@ class UserController extends Controller
         $data['wajib_ganti_password'] = true;
         $data['aktif'] = $data['aktif'] ?? true;
         $data['jenis_pegawai'] = $data['role'] === 'guru' ? $data['jenis_pegawai'] : null;
+        $data['no_wa'] = $data['role'] === 'guru_piket' ? $data['no_wa'] : null;
 
         User::create($data);
 
@@ -60,6 +61,7 @@ class UserController extends Controller
         }
 
         $data['jenis_pegawai'] = $data['role'] === 'guru' ? $data['jenis_pegawai'] : null;
+        $data['no_wa'] = $data['role'] === 'guru_piket' ? $data['no_wa'] : null;
 
         $user->update($data);
 
@@ -75,11 +77,11 @@ class UserController extends Controller
 
         if ($user->is($request->user())) {
             throw ValidationException::withMessages([
-                'user' => 'Tidak dapat menghapus akun sendiri.',
+                'user' => 'Tidak dapat menonaktifkan akun sendiri.',
             ]);
         }
 
-        $user->delete();
+        $user->update(['aktif' => false]);
 
         return redirect()->route('users.index');
     }

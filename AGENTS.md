@@ -85,6 +85,7 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 - Commit: `feat:`, `fix:`, `chore:`.
 
 ## Progress & laporan
-- Belum ada modul yang dibuat. Pembagian fitur masih menunggu keputusan PM bersama tim.
+- Status: **prototype**. Skema dasar sudah tersedia lewat migrasi, termasuk `absen_harian`, `kode_pengganti`, dan `notifikasi_wa`. Modul yang sudah ada: autentikasi + manajemen pengguna dasar oleh admin. Fitur absensi belum dibuat.
+- Keputusan terbaru ada di `docs/PRD.md` Bagian 9. Poin yang masih terbuka ada di Bagian 10: batasan monitoring admin, aturan jam absen harian, token konfirmasi, reset password akun tanpa email, dan paket fonnte produksi.
 - Setiap selesai satu bagian, AI **wajib melaporkan** ke user: apa yang dibuat (file/fitur), apa yang diubah, dan apa yang perlu dikonfirmasi. Jangan lanjut ke pekerjaan berikutnya sebelum dikonfirmasi.
 - Rencana pembagian fitur, checklist, dan pengerjaan detail dicatat PM saat sudah ditentukan.

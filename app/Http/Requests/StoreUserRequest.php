@@ -26,6 +26,7 @@ class StoreUserRequest extends FormRequest
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
             'nama' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'no_wa' => ['nullable', 'string', 'max:20', Rule::requiredIf(fn () => $this->input('role') === 'guru_piket')],
             'role' => ['required', Rule::in(['guru', 'guru_piket', 'kepsek'])],
             'jenis_pegawai' => ['nullable', Rule::requiredIf(fn () => $this->input('role') === 'guru'), Rule::in(['guru', 'tenaga_kependidikan'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
