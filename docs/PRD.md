@@ -21,7 +21,7 @@ Ada **4 role**: `admin`, `guru`, `guru_piket`, dan `kepsek`. Role `guru` punya k
 
 1. **Akun terpisah:** akun admin berdiri sendiri, bukan menyatu dengan akun guru. Satu orang boleh punya **2 akun** (akun guru untuk mengajar, akun admin untuk tugas administrasi).
 2. **Tidak wajib absen:** admin dikecualikan dari kewajiban absen harian.
-3. **Manajemen Data Master:** CRUD Data Guru, Siswa, Kelas, dan Mata Pelajaran.
+3. **Manajemen Data Master:** CRUD Data Guru, Siswa, Kelas, Tahun Ajaran, dan Mata Pelajaran.
 4. **Manajemen Jadwal Mengajar:** mengatur slot jam pelajaran, versi jadwal, kelas, mapel, dan guru pengampu.
 5. **Manajemen Jadwal Guru Piket:** mengatur **penugasan piket** (guru piket mana pada hari apa) dan jumlahnya.
 6. **Dashboard Monitoring (terbatas):**
@@ -58,6 +58,18 @@ Ada **4 role**: `admin`, `guru`, `guru_piket`, dan `kepsek`. Role `guru` punya k
 2. **Monitoring menyeluruh:** dashboard kepsek menampilkan pemantauan **semua guru dan kelas** secara menyeluruh (real-time), rekapitulasi absensi, dan laporan.
 3. Monitoring menyeluruh inilah yang **dipindahkan dari admin ke kepsek**; admin hanya menyisakan monitoring seperlunya.
 
+### E. Data Master Tahun Ajaran & Kelas (Admin)
+
+1. **Tahun Ajaran:** admin dapat melihat daftar, menambah, mengubah, menghapus, dan memilih **satu tahun ajaran aktif**.
+   - Hanya **1 tahun ajaran** yang boleh berstatus aktif pada satu waktu. Mengaktifkan tahun ajaran lain otomatis menonaktifkan tahun ajaran yang sebelumnya aktif.
+   - Field: `nama`, `semester` (`Ganjil` / `Genap`), `tanggal_mulai`, `tanggal_selesai`, `aktif`.
+   - Tahun ajaran yang masih aktif atau masih memiliki kelas **tidak boleh dihapus**.
+2. **Kelas:** admin dapat melihat daftar, menambah, mengubah, dan menghapus kelas.
+   - Setiap kelas **wajib terikat** ke satu `tahun_ajaran_id`.
+   - `wali_kelas_id` bersifat opsional dan mengacu ke akun `users` ber-role `guru` yang aktif.
+   - Nama kelas unik dalam satu tahun ajaran.
+   - Kelas yang masih memiliki siswa, jadwal, atau sesi **tidak boleh dihapus**.
+
 ---
 
 ## 3. Alur Penggantian Absen (Manual + Kode)
@@ -65,8 +77,8 @@ Ada **4 role**: `admin`, `guru`, `guru_piket`, dan `kepsek`. Role `guru` punya k
 Tidak ada trigger otomatis. Alur:
 
 1. Guru tiba-tiba tidak bisa hadir (mis. rapat mendadak).
-2. Guru melihat **daftar guru piket hari tersebut** di halaman guru, lalu klik tombol **"Hubungi"** → diarahkan ke **WhatsApp** guru piket untuk menanyakan kesediaan menggantikan absen.
-3. Bila guru piket bersedia, guru **generate kode unik** untuk sesi yang ditinggalkan.
+2. Guru melihat **daftar guru piket hari tersebut** di halaman guru, lalu klik tombol **"Hubungi"** → langsung membuka chat WhatsApp guru piket lewat `https://wa.me/<no_wa>` (tanpa perlu mencari kontak manual / keluar aplikasi web lebih dulu). Nomor WA diambil dari akun guru piket, jadi **`no_wa` wajib diisi saat admin membuat akun `guru_piket`**.
+3. Bila guru piket bersedia, guru **generate kode unik 6 digit numerik** untuk sesi yang ditinggalkan. Kode berlaku **sejak dibuat sampai jam pelajaran sesi itu selesai**, sekali pakai, dan hanya **guru pemilik sesi** yang boleh generate.
 4. Guru mengirim kode unik ke guru piket.
 5. Guru piket memasukkan kode → sesi terkait **terbuka** → guru piket mengabsen kelas sebagai guru pengganti.
 6. Halaman guru menampilkan status **"sudah digantikan"** (update otomatis via polling berkala).
@@ -89,12 +101,13 @@ Catatan: rapat mendadak dihitung **tetap hadir** untuk absen harian; yang dialih
 
 ## 5. Notifikasi WhatsApp (WA Blast)
 
-1. **Blast WA ke orang tua/wali** untuk siswa berstatus **Alfa (A)**, **Sakit (S)**, dan **Izin (I)**.
+1. **Blast WA ke orang tua/wali** untuk siswa berstatus **Alfa (A)**, **Sakit (S)**, dan **Izin (I)**. Blast dikirim **real-time saat guru menandai** status tersebut.
 2. Khusus Sakit/Izin, WA berisi **link konfirmasi + permintaan bukti**.
-3. **Anti-spam:** maksimal **1 blast per murid per hari**, meski murid di-alfa-kan di beberapa sesi.
+3. **Anti-spam:** maksimal **1 blast per murid per hari**, meski murid ditandai berbeda di beberapa sesi. Blast hanya dikirim pada penandaan pertama; perubahan status setelah blast tidak memicu blast ulang (untuk S/I, token/link konfirmasi diperbarui).
 4. **Provider:** **fonnte** (unofficial gateway, harga rupiah). Provider dibungkus lewat interface agar mudah diganti.
 5. **Anti-ban:** wajib pasang **delay acak** antar pesan dan batasi laju kirim (jangan kirim puluhan pesan dalam 1 detik — ini penyebab nomor diblokir).
 6. Setiap pengiriman dicatat di **log notifikasi**.
+7. **Masa development** memakai paket gratis fonnte (**1.000 pesan/bulan**); paket produksi ditentukan menyusul.
 
 ---
 
@@ -127,6 +140,7 @@ Perubahan hasil notulensi:
 9. Admin adalah **akun/role terpisah**; 1 orang boleh punya 2 akun; admin tidak absen.
 10. **Kepsek = role read-only** dengan monitoring menyeluruh; monitoring menyeluruh dipindah dari admin ke kepsek, admin tinggal monitoring terbatas.
 11. **Provider WA final: fonnte**, dengan delay acak + rate limit anti-ban.
+12. **Data master Tahun Ajaran & Kelas:** ditambahkan ke PRD mengikuti tabel `tahun_ajaran` dan `kelas` pada ERD; hanya 1 tahun ajaran aktif, kelas terikat tahun ajaran, dan wali kelas mengacu ke akun guru.
 
 ---
 
@@ -150,6 +164,12 @@ Aturan berikut sudah final. AI/developer **tidak boleh** menambah, mengurangi, a
 14. **Tanpa registrasi publik.** Akun tidak dibuat sendiri; **akun dibuat admin**. Admin pertama dibuat via **seeder**.
 15. **Hak buat akun:** admin boleh membuat akun `guru`, `guru_piket`, dan `kepsek`; admin **tidak boleh** membuat akun `admin` baru; kepsek (read-only) **tidak boleh** membuat akun apa pun.
 16. **`jenis_pegawai`** (`guru` / `tenaga_kependidikan`) wajib untuk akun ber-role `guru`, dikosongkan untuk role lain.
+17. **Kode unik penggantian:** **6 digit numerik**, dibuat hanya oleh **guru pemilik sesi**, berlaku **sejak dibuat sampai jam pelajaran sesi tersebut selesai**, dan **sekali pakai**.
+18. **Blast WA dikirim real-time** saat guru menandai **A/S/I**, dengan **dedupe 1x per murid per hari**. Perubahan status setelah blast tidak memicu blast ulang; untuk S/I token/link konfirmasi diperbarui.
+19. **Kontak guru piket:** akun `guru_piket` **wajib punya `no_wa`**; tombol **"Hubungi"** di halaman guru membuka chat `wa.me`. Tidak ada tipe notifikasi WA `pengganti`.
+20. **Password:** `wajib_ganti_password = true` saat akun dibuat atau direset admin. **Lupa password diselesaikan lewat link reset via email**.
+21. **Hapus akun = nonaktifkan** (`aktif = false`), bukan hapus permanen.
+22. **fonnte masa development:** paket gratis **1.000 pesan/bulan**.
 
 ---
 
@@ -157,27 +177,14 @@ Aturan berikut sudah final. AI/developer **tidak boleh** menambah, mengurangi, a
 
 Untuk poin di bawah ini, AI/developer **harus berhenti dan bertanya ke PM**, **bukan** menebak. Kolom *Usulan* adalah ide (belum mengikat) sampai disetujui.
 
-1. **Durasi kadaluarsa kode unik.**
-   *Usulan:* berlaku sampai sesi/jam pelajaran itu selesai (maks ±2 jam), sekali pakai; lewat itu kadaluarsa dan guru harus generate ulang.
-2. **Batasan monitoring admin (persisnya apa).**
+1. **Batasan monitoring admin (persisnya apa).**
    *Usulan:* kepsek = monitoring menyeluruh (semua guru & kelas real-time + rekap + tren). Admin = operasional saja (data master, jadwal, rekap absensi siswa per kelas, daftar absen hari ini) tanpa dashboard monitoring menyeluruh.
-3. **Kapan blast WA dikirim & status mana yang dipakai bila murid ditandai berbeda di beberapa sesi.**
-   *Usulan:* blast dikirim **real-time saat guru menandai**, tetapi **dedupe 1x/murid/hari** (kirim pertama kali saja). Perubahan status setelah blast tidak memicu blast ulang, cukup update token/link konfirmasi bila S/I.
-4. **Detail kode unik.**
-   *Usulan:* 6 karakter alfanumerik (tanpa huruf/angka ambigu), sekali pakai, hanya **guru pemilik sesi** yang boleh generate (guru piket tidak).
-5. **Aturan jam absen harian (tepat waktu/terlambat, jam pulang).**
+2. **Aturan jam absen harian (tepat waktu/terlambat, jam pulang).**
    *Usulan:* satu absen masuk/hari; admin mengatur jam masuk + toleransi (mis. 07:00 + 15 menit) → status tepat waktu/terlambat. **Jam pulang belum ada** di v1.
-6. **Token konfirmasi: 1 token per sesi atau per murid harian?**
+3. **Token konfirmasi: 1 token per sesi atau per murid harian?**
    *Usulan:* 1 token per (murid, tanggal); dipakai ulang bila murid S/I lagi hari itu; route publik `GET/POST /konfirmasi/{token}`.
-7. **Tipe `pengganti` di `NOTIFIKASI_WA`.**
-   *Usulan:* tidak dipakai di v1 karena penggantian lewat WA manual; boleh dihapus dari log atau disimpan untuk fitur blast otomatis nanti. Butuh keputusan.
-8. **Harga/paket fonnte** menyesuaikan volume; dicek di dashboard fonnte sebelum implementasi.
-9. **Paksa ganti password saat login pertama (`wajib_ganti_password`).**
-   *Usulan:* setelah login pertama, user wajib ganti password sebelum mengakses fitur lain; kolom `wajib_ganti_password` di-set `true` saat akun dibuat/di-reset oleh admin.
-10. **Alur reset / forgot password.**
-    *Usulan:* login memakai NIP sedangkan `email` opsional, jadi reset password self-service via email tidak selalu bisa. Alternatif: reset oleh admin (set password baru + `wajib_ganti_password`).
-11. **Cara penghapusan akun: hapus permanen atau nonaktifkan?**
-    *Usulan:* nonaktifkan (`aktif = false`) agar riwayat absen/jadwal tidak hilang, karena FK `users` di `sesi`, `jadwal_slot`, `absen_guru`, dan `guru_piket` bersifat `cascadeOnDelete`.
+4. **Reset password untuk akun tanpa email.** Email bersifat opsional (login memakai NIP/NUPTK). Keputusan saat ini: reset lewat link email. Perlu dipastikan apakah akun tanpa email wajib diisi emailnya atau direset manual oleh admin.
+5. **Paket fonnte untuk produksi** (masa development memakai paket gratis 1.000 pesan/bulan). Dicek di dashboard fonnte sebelum go-live.
 
 ---
 

@@ -32,12 +32,30 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </NavLink>
 
                                 {user.role === 'admin' && (
-                                    <NavLink
-                                        href={route('users.index')}
-                                        active={route().current('users.*')}
-                                    >
-                                        Pengguna
-                                    </NavLink>
+                                    <>
+                                        <NavLink
+                                            href={route('users.index')}
+                                            active={route().current('users.*')}
+                                        >
+                                            Pengguna
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route('tahun-ajaran.index')}
+                                            active={route().current(
+                                                'tahun-ajaran.*',
+                                            )}
+                                        >
+                                            Tahun Ajaran
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route('kelas.index')}
+                                            active={route().current('kelas.*')}
+                                        >
+                                            Kelas
+                                        </NavLink>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -145,12 +163,28 @@ export default function AuthenticatedLayout({ header, children }) {
                         </ResponsiveNavLink>
 
                         {user.role === 'admin' && (
-                            <ResponsiveNavLink
-                                href={route('users.index')}
-                                active={route().current('users.*')}
-                            >
-                                Pengguna
-                            </ResponsiveNavLink>
+                            <>
+                                <ResponsiveNavLink
+                                    href={route('users.index')}
+                                    active={route().current('users.*')}
+                                >
+                                    Pengguna
+                                </ResponsiveNavLink>
+
+                                <ResponsiveNavLink
+                                    href={route('tahun-ajaran.index')}
+                                    active={route().current('tahun-ajaran.*')}
+                                >
+                                    Tahun Ajaran
+                                </ResponsiveNavLink>
+
+                                <ResponsiveNavLink
+                                    href={route('kelas.index')}
+                                    active={route().current('kelas.*')}
+                                >
+                                    Kelas
+                                </ResponsiveNavLink>
+                            </>
                         )}
                     </div>
 

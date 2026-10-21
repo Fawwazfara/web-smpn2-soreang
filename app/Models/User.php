@@ -15,6 +15,7 @@ use Illuminate\Notifications\Notifiable;
     'username',
     'nama',
     'email',
+    'no_wa',
     'password',
     'role',
     'jenis_pegawai',
