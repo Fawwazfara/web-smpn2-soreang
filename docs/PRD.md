@@ -21,7 +21,7 @@ Ada **4 role**: `admin`, `guru`, `guru_piket`, dan `kepsek`. Role `guru` punya k
 
 1. **Akun terpisah:** akun admin berdiri sendiri, bukan menyatu dengan akun guru. Satu orang boleh punya **2 akun** (akun guru untuk mengajar, akun admin untuk tugas administrasi).
 2. **Tidak wajib absen:** admin dikecualikan dari kewajiban absen harian.
-3. **Manajemen Data Master:** CRUD Data Guru, Siswa, Kelas, dan Mata Pelajaran.
+3. **Manajemen Data Master:** CRUD Data Guru, Siswa, Kelas, Tahun Ajaran, dan Mata Pelajaran.
 4. **Manajemen Jadwal Mengajar:** mengatur slot jam pelajaran, versi jadwal, kelas, mapel, dan guru pengampu.
 5. **Manajemen Jadwal Guru Piket:** mengatur **penugasan piket** (guru piket mana pada hari apa) dan jumlahnya.
 6. **Dashboard Monitoring (terbatas):**
@@ -57,6 +57,18 @@ Ada **4 role**: `admin`, `guru`, `guru_piket`, dan `kepsek`. Role `guru` punya k
 1. **Role tersendiri:** `kepsek`, bersifat **read-only** (hanya melihat, tidak bisa mengubah data maupun mengabsen).
 2. **Monitoring menyeluruh:** dashboard kepsek menampilkan pemantauan **semua guru dan kelas** secara menyeluruh (real-time), rekapitulasi absensi, dan laporan.
 3. Monitoring menyeluruh inilah yang **dipindahkan dari admin ke kepsek**; admin hanya menyisakan monitoring seperlunya.
+
+### E. Data Master Tahun Ajaran & Kelas (Admin)
+
+1. **Tahun Ajaran:** admin dapat melihat daftar, menambah, mengubah, menghapus, dan memilih **satu tahun ajaran aktif**.
+   - Hanya **1 tahun ajaran** yang boleh berstatus aktif pada satu waktu. Mengaktifkan tahun ajaran lain otomatis menonaktifkan tahun ajaran yang sebelumnya aktif.
+   - Field: `nama`, `semester` (`Ganjil` / `Genap`), `tanggal_mulai`, `tanggal_selesai`, `aktif`.
+   - Tahun ajaran yang masih aktif atau masih memiliki kelas **tidak boleh dihapus**.
+2. **Kelas:** admin dapat melihat daftar, menambah, mengubah, dan menghapus kelas.
+   - Setiap kelas **wajib terikat** ke satu `tahun_ajaran_id`.
+   - `wali_kelas_id` bersifat opsional dan mengacu ke akun `users` ber-role `guru` yang aktif.
+   - Nama kelas unik dalam satu tahun ajaran.
+   - Kelas yang masih memiliki siswa, jadwal, atau sesi **tidak boleh dihapus**.
 
 ---
 
@@ -128,6 +140,7 @@ Perubahan hasil notulensi:
 9. Admin adalah **akun/role terpisah**; 1 orang boleh punya 2 akun; admin tidak absen.
 10. **Kepsek = role read-only** dengan monitoring menyeluruh; monitoring menyeluruh dipindah dari admin ke kepsek, admin tinggal monitoring terbatas.
 11. **Provider WA final: fonnte**, dengan delay acak + rate limit anti-ban.
+12. **Data master Tahun Ajaran & Kelas:** ditambahkan ke PRD mengikuti tabel `tahun_ajaran` dan `kelas` pada ERD; hanya 1 tahun ajaran aktif, kelas terikat tahun ajaran, dan wali kelas mengacu ke akun guru.
 
 ---
 

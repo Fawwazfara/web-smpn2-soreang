@@ -11,6 +11,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['nama', 'semester', 'tanggal_mulai', 'tanggal_selesai', 'aktif'])]
 class TahunAjaran extends Model
 {
+    protected static function booted(): void
+    {
+        static::saving(function (TahunAjaran $tahunAjaran) {
+            if (! $tahunAjaran->aktif) {
+                return;
+            }
+
+            $query = static::query()->where('aktif', true);
+
+            if ($tahunAjaran->exists) {
+                $query->whereKeyNot($tahunAjaran->getKey());
+            }
+
+            $query->update(['aktif' => false]);
+        });
+    }
+
     protected function casts(): array
     {
         return [

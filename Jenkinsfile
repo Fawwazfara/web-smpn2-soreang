@@ -25,4 +25,3 @@ appPipeline(
     skipDocker: true                    // CI saja: tidak build/push image Docker
 )
 
-
