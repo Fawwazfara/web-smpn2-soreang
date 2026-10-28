@@ -55,6 +55,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Kelas
                                         </NavLink>
+
+                                        <NavLink
+                                            href={route('admin.berita.index')}
+                                            active={route().current('admin.berita.*')}
+                                        >
+                                            Berita
+                                        </NavLink>
                                     </>
                                 )}
                             </div>
@@ -183,6 +190,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current('kelas.*')}
                                 >
                                     Kelas
+                                </ResponsiveNavLink>
+
+                                <ResponsiveNavLink
+                                    href={route('admin.berita.index')}
+                                    active={route().current('admin.berita.*')}
+                                >
+                                    Berita
                                 </ResponsiveNavLink>
                             </>
                         )}

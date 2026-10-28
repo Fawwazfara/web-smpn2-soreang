@@ -1,355 +1,942 @@
 import { Head, Link } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 
-export default function Welcome({ auth, laravelVersion, phpVersion }) {
-    const handleImageError = () => {
-        document
-            .getElementById('screenshot-container')
-            ?.classList.add('!hidden');
-        document.getElementById('docs-card')?.classList.add('!row-span-1');
-        document
-            .getElementById('docs-card-content')
-            ?.classList.add('!flex-row');
-        document.getElementById('background')?.classList.add('!hidden');
-    };
+// Default gallery data matching the screenshot
+const GALLERY_ITEMS = [
+    {
+        id: 'gal-1',
+        title: 'Laboratorium Komputer & Riset Literasi Digital',
+        category: 'Fasilitas',
+        badge: 'FASILITAS UNGGULAN',
+        caption: 'Akses jaringan internet serat optik kecepatan tinggi untuk simulasi ANBK dan riset informatika.',
+        image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80',
+        featured: true,
+    },
+    {
+        id: 'gal-2',
+        title: 'Gerakan Pramuka Gugus Depan Soreang',
+        category: 'Ekstrakurikuler',
+        badge: 'EKSTRAKURIKULER',
+        caption: 'Pembentukan kedisiplinan dan kepemimpinan kepanduan siswa di medan tangguh.',
+        image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+        id: 'gal-3',
+        title: 'Perpustakaan Cerdas "Pustaka Asri"',
+        category: 'Fasilitas',
+        badge: 'FASILITAS',
+        caption: 'Koleksi 12.000 buku fisik dan akses digital library yang nyaman.',
+        image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+        id: 'gal-4',
+        title: 'Pasanggiri Karawitan & Angklung',
+        category: 'Seni & Budaya',
+        badge: 'KESENIAN JEUNG SUNDA',
+        caption: 'Pelestarian tradisi musik Sunda lewat ansambel musik bambu.',
+        image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+        id: 'gal-5',
+        title: 'Juara 1 Turnamen Bola Basket Kab. Bandung',
+        category: 'Ekstrakurikuler',
+        badge: 'OLAHRAGA PRESTASI',
+        caption: 'Kontingen putra mengukir kemenangan dramatis di laga final antar-SMP.',
+        image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
+    },
+];
+
+const formatDateIndo = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+        });
+    } catch {
+        return dateStr;
+    }
+};
+
+export default function Welcome({ auth, berita = [] }) {
+    const [selectedCategory, setSelectedCategory] = useState('Semua');
+    const [activeArticle, setActiveArticle] = useState(null);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Published news from props
+    const publishedNews = useMemo(() => {
+        return Array.isArray(berita) ? berita : [];
+    }, [berita]);
+
+    const featuredArticle = publishedNews[0] || null;
+    const secondaryArticles = publishedNews.slice(1, 4);
+
+    const filteredGallery = useMemo(() => {
+        if (selectedCategory === 'Semua') return GALLERY_ITEMS;
+        return GALLERY_ITEMS.filter((item) => item.category === selectedCategory);
+    }, [selectedCategory]);
 
     return (
-        <>
-            <Head title="Welcome" />
-            <div className="bg-gray-50 text-black/50 dark:bg-black dark:text-white/50">
-                <img
-                    id="background"
-                    className="absolute -left-20 top-0 max-w-[877px]"
-                    src="https://laravel.com/assets/img/welcome/background.svg"
-                />
-                <div className="relative flex min-h-screen flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">
-                    <div className="relative w-full max-w-2xl px-6 lg:max-w-7xl">
-                        <header className="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3">
-                            <div className="flex lg:col-start-2 lg:justify-center">
-                                <svg
-                                    className="h-12 w-auto text-white lg:h-16 lg:text-[#FF2D20]"
-                                    viewBox="0 0 62 65"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    <path
-                                        d="M61.8548 14.6253C61.8778 14.7102 61.8895 14.7978 61.8897 14.8858V28.5615C61.8898 28.737 61.8434 28.9095 61.7554 29.0614C61.6675 29.2132 61.5409 29.3392 61.3887 29.4265L49.9104 36.0351V49.1337C49.9104 49.4902 49.7209 49.8192 49.4118 49.9987L25.4519 63.7916C25.3971 63.8227 25.3372 63.8427 25.2774 63.8639C25.255 63.8714 25.2338 63.8851 25.2101 63.8913C25.0426 63.9354 24.8666 63.9354 24.6991 63.8913C24.6716 63.8838 24.6467 63.8689 24.6205 63.8589C24.5657 63.8389 24.5084 63.8215 24.456 63.7916L0.501061 49.9987C0.348882 49.9113 0.222437 49.7853 0.134469 49.6334C0.0465019 49.4816 0.000120578 49.3092 0 49.1337L0 8.10652C0 8.01678 0.0124642 7.92953 0.0348998 7.84477C0.0423783 7.8161 0.0598282 7.78993 0.0697995 7.76126C0.0884958 7.70891 0.105946 7.65531 0.133367 7.6067C0.152063 7.5743 0.179485 7.54812 0.20192 7.51821C0.230588 7.47832 0.256763 7.43719 0.290416 7.40229C0.319084 7.37362 0.356476 7.35243 0.388883 7.32751C0.425029 7.29759 0.457436 7.26518 0.498568 7.2415L12.4779 0.345059C12.6296 0.257786 12.8015 0.211853 12.9765 0.211853C13.1515 0.211853 13.3234 0.257786 13.475 0.345059L25.4531 7.2415H25.4556C25.4955 7.26643 25.5292 7.29759 25.5653 7.32626C25.5977 7.35119 25.6339 7.37362 25.6625 7.40104C25.6974 7.43719 25.7224 7.47832 25.7523 7.51821C25.7735 7.54812 25.8021 7.5743 25.8196 7.6067C25.8483 7.65656 25.8645 7.70891 25.8844 7.76126C25.8944 7.78993 25.9118 7.8161 25.9193 7.84602C25.9423 7.93096 25.954 8.01853 25.9542 8.10652V33.7317L35.9355 27.9844V14.8846C35.9355 14.7973 35.948 14.7088 35.9704 14.6253C35.9792 14.5954 35.9954 14.5692 36.0053 14.5405C36.0253 14.4882 36.0427 14.4346 36.0702 14.386C36.0888 14.3536 36.1163 14.3274 36.1375 14.2975C36.1674 14.2576 36.1923 14.2165 36.2272 14.1816C36.2559 14.1529 36.292 14.1317 36.3244 14.1068C36.3618 14.0769 36.3942 14.0445 36.4341 14.0208L48.4147 7.12434C48.5663 7.03694 48.7383 6.99094 48.9133 6.99094C49.0883 6.99094 49.2602 7.03694 49.4118 7.12434L61.3899 14.0208C61.4323 14.0457 61.4647 14.0769 61.5021 14.1055C61.5333 14.1305 61.5694 14.1529 61.5981 14.1803C61.633 14.2165 61.6579 14.2576 61.6878 14.2975C61.7103 14.3274 61.7377 14.3536 61.7551 14.386C61.7838 14.4346 61.8 14.4882 61.8199 14.5405C61.8312 14.5692 61.8474 14.5954 61.8548 14.6253ZM59.893 27.9844V16.6121L55.7013 19.0252L49.9104 22.3593V33.7317L59.8942 27.9844H59.893ZM47.9149 48.5566V37.1768L42.2187 40.4299L25.953 49.7133V61.2003L47.9149 48.5566ZM1.99677 9.83281V48.5566L23.9562 61.199V49.7145L12.4841 43.2219L12.4804 43.2194L12.4754 43.2169C12.4368 43.1945 12.4044 43.1621 12.3682 43.1347C12.3371 43.1097 12.3009 43.0898 12.2735 43.0624L12.271 43.0586C12.2386 43.0275 12.2162 42.9888 12.1887 42.9539C12.1638 42.9203 12.1339 42.8916 12.114 42.8567L12.1127 42.853C12.0903 42.8156 12.0766 42.7707 12.0604 42.7283C12.0442 42.6909 12.023 42.656 12.013 42.6161C12.0005 42.5688 11.998 42.5177 11.9931 42.4691C11.9881 42.4317 11.9781 42.3943 11.9781 42.3569V15.5801L6.18848 12.2446L1.99677 9.83281ZM12.9777 2.36177L2.99764 8.10652L12.9752 13.8513L22.9541 8.10527L12.9752 2.36177H12.9777ZM18.1678 38.2138L23.9574 34.8809V9.83281L19.7657 12.2459L13.9749 15.5801V40.6281L18.1678 38.2138ZM48.9133 9.14105L38.9344 14.8858L48.9133 20.6305L58.8909 14.8846L48.9133 9.14105ZM47.9149 22.3593L42.124 19.0252L37.9323 16.6121V27.9844L43.7219 31.3174L47.9149 33.7317V22.3593ZM24.9533 47.987L39.59 39.631L46.9065 35.4555L36.9352 29.7145L25.4544 36.3242L14.9907 42.3482L24.9533 47.987Z"
-                                        fill="currentColor"
-                                    />
+        <div className="min-h-screen bg-[#fafcfb] text-gray-800 font-sans selection:bg-emerald-700 selection:text-white">
+            <Head title="SMPN 2 Soreang - Berkarakter, Unggul & Berkelanjutan" />
+
+            {/* TOP NAVIGATION BAR */}
+            <header className="sticky top-0 z-50 bg-[#0d2e23] border-b border-emerald-900/60 shadow-md">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-16 sm:h-20">
+                        {/* School Logo & Title */}
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-emerald-800/80 border border-emerald-600/40 flex items-center justify-center text-white shadow-inner flex-shrink-0">
+                                <svg className="w-6 h-6 text-emerald-300" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
                                 </svg>
                             </div>
-                            <nav className="-mx-3 flex flex-1 justify-end">
-                                {auth.user ? (
-                                    <Link
-                                        href={route('dashboard')}
-                                        className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={route('login')}
-                                            className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                                        >
-                                            Log in
-                                        </Link>
-                                    </>
-                                )}
-                            </nav>
-                        </header>
+                            <div className="leading-tight">
+                                <span className="block text-white font-bold text-base sm:text-lg tracking-tight">
+                                    SMPN 2 Soreang
+                                </span>
+                                <span className="block text-emerald-300 text-[10px] sm:text-[11px] font-medium tracking-wider uppercase">
+                                    Kab. Bandung - Indonesia
+                                </span>
+                            </div>
+                        </div>
 
-                        <main className="mt-6">
-                            <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-                                <a
-                                    href="https://laravel.com/docs"
-                                    id="docs-card"
-                                    className="flex flex-col items-start gap-6 overflow-hidden rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300 hover:text-black/70 hover:ring-black/20 focus:outline-none focus-visible:ring-[#FF2D20] md:row-span-3 lg:p-10 lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
+                        {/* Desktop Navigation Links */}
+                        <nav className="hidden lg:flex items-center space-x-7 text-xs font-medium text-emerald-100/90 tracking-wide">
+                            <a href="#" className="text-emerald-300 font-semibold hover:text-white transition">
+                                Beranda
+                            </a>
+                            <a href="#sambutan" className="hover:text-emerald-300 transition">
+                                Profil
+                            </a>
+                            <a href="#berita" className="hover:text-emerald-300 transition">
+                                Berita
+                            </a>
+                            <a href="#galeri" className="hover:text-emerald-300 transition">
+                                Galeri
+                            </a>
+                            <a href="#kontak" className="hover:text-emerald-300 transition">
+                                Kontak
+                            </a>
+                        </nav>
+
+                        {/* Search & Login Action */}
+                        <div className="hidden sm:flex items-center gap-3">
+                            <a
+                                href="#berita"
+                                className="p-2 text-emerald-300 hover:text-white rounded-full hover:bg-emerald-800/50 transition"
+                                title="Cari Berita"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </a>
+
+                            {auth?.user ? (
+                                <Link
+                                    href={route('dashboard')}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-full font-semibold text-xs tracking-wide transition shadow-sm inline-flex items-center gap-1.5"
                                 >
-                                    <div
-                                        id="screenshot-container"
-                                        className="relative flex w-full flex-1 items-stretch"
-                                    >
-                                        <img
-                                            src="https://laravel.com/assets/img/welcome/docs-light.svg"
-                                            alt="Laravel documentation screenshot"
-                                            className="aspect-video h-full w-full flex-1 rounded-[10px] object-cover object-top drop-shadow-[0px_4px_34px_rgba(0,0,0,0.06)] dark:hidden"
-                                            onError={handleImageError}
-                                        />
-                                        <img
-                                            src="https://laravel.com/assets/img/welcome/docs-dark.svg"
-                                            alt="Laravel documentation screenshot"
-                                            className="hidden aspect-video h-full w-full flex-1 rounded-[10px] object-cover object-top drop-shadow-[0px_4px_34px_rgba(0,0,0,0.25)] dark:block"
-                                        />
-                                        <div className="absolute -bottom-16 -left-16 h-40 w-[calc(100%+8rem)] bg-gradient-to-b from-transparent via-white to-white dark:via-zinc-900 dark:to-zinc-900"></div>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                    </svg>
+                                    Dashboard ({auth.user.nama?.split(' ')[0]})
+                                </Link>
+                            ) : (
+                                <Link
+                                    href={route('login')}
+                                    className="bg-white hover:bg-emerald-50 text-[#0d2e23] px-4 py-2 rounded-full font-bold text-xs tracking-wide transition shadow-sm inline-flex items-center gap-1.5"
+                                >
+                                    Login Admin
+                                </Link>
+                            )}
+                        </div>
+
+                        {/* Mobile Hamburger Button */}
+                        <div className="flex sm:hidden items-center gap-2">
+                            {auth?.user ? (
+                                <Link
+                                    href={route('dashboard')}
+                                    className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-full text-xs font-semibold"
+                                >
+                                    Dashboard
+                                </Link>
+                            ) : (
+                                <Link
+                                    href={route('login')}
+                                    className="bg-white text-[#0d2e23] px-3 py-1.5 rounded-full text-xs font-bold"
+                                >
+                                    Login
+                                </Link>
+                            )}
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="p-2 text-emerald-300 hover:text-white rounded-lg focus:outline-none"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d={mobileMenuOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'}
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile Drawer */}
+                {mobileMenuOpen && (
+                    <div className="lg:hidden bg-[#0a241b] border-t border-emerald-900 px-4 py-3 space-y-2">
+                        <a
+                            href="#"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-3 py-2 rounded-md text-emerald-300 font-semibold text-sm hover:bg-emerald-900/60"
+                        >
+                            Beranda
+                        </a>
+                        <a
+                            href="#sambutan"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-3 py-2 rounded-md text-emerald-100 text-sm hover:bg-emerald-900/60"
+                        >
+                            Profil &amp; Sambutan
+                        </a>
+                        <a
+                            href="#berita"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-3 py-2 rounded-md text-emerald-100 text-sm hover:bg-emerald-900/60"
+                        >
+                            Kabar Terkini
+                        </a>
+                        <a
+                            href="#galeri"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-3 py-2 rounded-md text-emerald-100 text-sm hover:bg-emerald-900/60"
+                        >
+                            Galeri Sekolah
+                        </a>
+                        <a
+                            href="#kontak"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-3 py-2 rounded-md text-emerald-100 text-sm hover:bg-emerald-900/60"
+                        >
+                            Kontak &amp; TU
+                        </a>
+                    </div>
+                )}
+            </header>
+
+            {/* HERO SECTION */}
+            <section className="relative min-h-[580px] sm:min-h-[640px] flex items-center justify-center overflow-hidden bg-[#0d2e23]">
+                {/* Background image with layered dark green tint */}
+                <div
+                    className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-30 transform scale-105 transition-transform duration-1000"
+                    style={{
+                        backgroundImage:
+                            "url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1920&q=80')",
+                    }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#0d2e23]/95 via-[#0d2e23]/80 to-[#0d2e23]" />
+
+                {/* Hero Centered Content */}
+                <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center text-white z-10">
+                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15]">
+                        Mewujudkan Generasi{' '}
+                        <span className="text-[#34d399] font-serif italic font-normal">
+                            Cerdas, Berkarakter
+                        </span>{' '}
+                        &amp; Unggul Berkelanjutan.
+                    </h1>
+
+                    <p className="mt-6 text-sm sm:text-base lg:text-lg text-emerald-100/85 max-w-2xl mx-auto leading-relaxed">
+                        Pusat pendidikan menengah pertama unggulan Kabupaten Bandung yang memadukan keunggulan akademik, riset digital, kesiswaan, serta transparansi KBM daring yang modern.
+                    </p>
+
+                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <a
+                            href="#sambutan"
+                            className="w-full sm:w-auto bg-[#10b981] hover:bg-[#059669] text-white font-semibold text-sm px-7 py-3 rounded-full shadow-lg hover:shadow-emerald-900/40 transition duration-150 inline-flex items-center justify-center gap-2"
+                        >
+                            <span>Jelajahi Profil &amp; Program</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </a>
+                    </div>
+
+                    {/* Scroll Cue */}
+                    <div className="mt-14 flex flex-col items-center justify-center text-emerald-300/80 text-[11px] font-medium tracking-widest uppercase">
+                        <span>GULIR KE BAWAH</span>
+                        <svg className="w-4 h-4 mt-1.5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            {/* PRINCIPAL'S WELCOME SECTION */}
+            <section id="sambutan" className="py-20 bg-white border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Section Badge */}
+                    <div className="mb-6">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                            AMANAT KEPEMIMPINAN SEKOLAH
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+                        {/* Principal Portrait Card */}
+                        <div className="lg:col-span-5">
+                            <div className="relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-[#0d2e23]">
+                                <img
+                                    src="https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=900&q=80"
+                                    alt="Kepala Sekolah SMPN 2 Soreang"
+                                    className="w-full h-[420px] sm:h-[480px] object-cover object-top"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#0a241b] via-[#0a241b]/40 to-transparent" />
+
+                                {/* Name Card Overlay */}
+                                <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white">
+                                    <h3 className="text-lg font-bold">
+                                        Drs. H. Ahmad Fauzi, M.Pd.
+                                    </h3>
+                                    <p className="text-emerald-300 text-xs font-medium mt-0.5">
+                                        Kepala Sekolah SMPN 2 Soreang
+                                    </p>
+                                    <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-300">
+                                        <span>Periode 2021 s.d. Sekarang</span>
+                                        <span>•</span>
+                                        <span>NIP. 19680720 199403 1 004</span>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                    <div className="relative flex items-center gap-6 lg:items-end">
-                                        <div
-                                            id="docs-card-content"
-                                            className="flex items-start gap-6 lg:flex-col"
-                                        >
-                                            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16">
-                                                <svg
-                                                    className="size-5 sm:size-6"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        fill="#FF2D20"
-                                                        d="M23 4a1 1 0 0 0-1.447-.894L12.224 7.77a.5.5 0 0 1-.448 0L2.447 3.106A1 1 0 0 0 1 4v13.382a1.99 1.99 0 0 0 1.105 1.79l9.448 4.728c.14.065.293.1.447.1.154-.005.306-.04.447-.105l9.453-4.724a1.99 1.99 0 0 0 1.1-1.789V4ZM3 6.023a.25.25 0 0 1 .362-.223l7.5 3.75a.251.251 0 0 1 .138.223v11.2a.25.25 0 0 1-.362.224l-7.5-3.75a.25.25 0 0 1-.138-.22V6.023Zm18 11.2a.25.25 0 0 1-.138.224l-7.5 3.75a.249.249 0 0 1-.329-.099.249.249 0 0 1-.033-.12V9.772a.251.251 0 0 1 .138-.224l7.5-3.75a.25.25 0 0 1 .362.224v11.2Z"
-                                                    />
-                                                    <path
-                                                        fill="#FF2D20"
-                                                        d="m3.55 1.893 8 4.048a1.008 1.008 0 0 0 .9 0l8-4.048a1 1 0 0 0-.9-1.785l-7.322 3.706a.506.506 0 0 1-.452 0L4.454.108a1 1 0 0 0-.9 1.785H3.55Z"
-                                                    />
-                                                </svg>
-                                            </div>
+                        {/* Principal Speech & Value Cards */}
+                        <div className="lg:col-span-7 space-y-6">
+                            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0d2e23] tracking-tight leading-snug">
+                                "Pendidikan Berkualitas Bermula Dari Kedisiplinan yang Berkeadaban dan Akuntabel."
+                            </h2>
 
-                                            <div className="pt-3 sm:pt-5 lg:pt-0">
-                                                <h2 className="text-xl font-semibold text-black dark:text-white">
-                                                    Documentation
-                                                </h2>
+                            <div className="space-y-4 text-gray-600 text-sm sm:text-base leading-relaxed">
+                                <p>
+                                    <strong className="text-emerald-900 font-semibold">Sampurasun!</strong> Selamat datang di portal resmi informasi dan transparansi akademik SMP Negeri 2 Soreang. Kami mendedikasikan eksistensi sekolah ini sebagai wadah tumbuh kembang insan muda Kabupaten Bandung yang tidak hanya tangguh dalam ranah kognitif dan kompetisi sains, namun juga luhur dalam budi pekerti serta kearifan lokal Sunda.
+                                </p>
+                                <p>
+                                    Melalui peluncuran Sistem Tatakelola &amp; Presensi Digital Terpadu, kami menghadirkan keterbukaan akses jadwal belajar mengajar, pendelegasian kegiatan ekstrakurikuler, serta pemantauan kedisiplinan guru dan siswa secara real-time. Seluruh orang tua dan masyarakat luas kini dapat memantau denyut pendidikan putra-putrinya secara transparan.
+                                </p>
+                            </div>
 
-                                                <p className="mt-4 text-sm/relaxed">
-                                                    Laravel has wonderful
-                                                    documentation covering every
-                                                    aspect of the framework.
-                                                    Whether you are a newcomer
-                                                    or have prior experience
-                                                    with Laravel, we recommend
-                                                    reading our documentation
-                                                    from beginning to end.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <svg
-                                            className="size-6 shrink-0 stroke-[#FF2D20]"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            strokeWidth="1.5"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                                            />
+                            {/* 2 Feature Cards */}
+                            <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-start gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                                         </svg>
                                     </div>
-                                </a>
-
-                                <a
-                                    href="https://laracasts.com"
-                                    className="flex items-start gap-4 rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300 hover:text-black/70 hover:ring-black/20 focus:outline-none focus-visible:ring-[#FF2D20] lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
-                                >
-                                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16">
-                                        <svg
-                                            className="size-5 sm:size-6"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <g fill="#FF2D20">
-                                                <path d="M24 8.25a.5.5 0 0 0-.5-.5H.5a.5.5 0 0 0-.5.5v12a2.5 2.5 0 0 0 2.5 2.5h19a2.5 2.5 0 0 0 2.5-2.5v-12Zm-7.765 5.868a1.221 1.221 0 0 1 0 2.264l-6.626 2.776A1.153 1.153 0 0 1 8 18.123v-5.746a1.151 1.151 0 0 1 1.609-1.035l6.626 2.776ZM19.564 1.677a.25.25 0 0 0-.177-.427H15.6a.106.106 0 0 0-.072.03l-4.54 4.543a.25.25 0 0 0 .177.427h3.783c.027 0 .054-.01.073-.03l4.543-4.543ZM22.071 1.318a.047.047 0 0 0-.045.013l-4.492 4.492a.249.249 0 0 0 .038.385.25.25 0 0 0 .14.042h5.784a.5.5 0 0 0 .5-.5v-2a2.5 2.5 0 0 0-1.925-2.432ZM13.014 1.677a.25.25 0 0 0-.178-.427H9.101a.106.106 0 0 0-.073.03l-4.54 4.543a.25.25 0 0 0 .177.427H8.4a.106.106 0 0 0 .073-.03l4.54-4.543ZM6.513 1.677a.25.25 0 0 0-.177-.427H2.5A2.5 2.5 0 0 0 0 3.75v2a.5.5 0 0 0 .5.5h1.4a.106.106 0 0 0 .073-.03l4.54-4.543Z" />
-                                            </g>
-                                        </svg>
-                                    </div>
-
-                                    <div className="pt-3 sm:pt-5">
-                                        <h2 className="text-xl font-semibold text-black dark:text-white">
-                                            Laracasts
-                                        </h2>
-
-                                        <p className="mt-4 text-sm/relaxed">
-                                            Laracasts offers thousands of video
-                                            tutorials on Laravel, PHP, and
-                                            JavaScript development. Check them
-                                            out, see for yourself, and massively
-                                            level up your development skills in
-                                            the process.
+                                    <div>
+                                        <h4 className="text-sm font-bold text-emerald-950">
+                                            100% Bebas Pungli
+                                        </h4>
+                                        <p className="text-xs text-gray-600 mt-0.5 leading-normal">
+                                            Pelayanan tata usaha inklusif, transparan dan berintegritas.
                                         </p>
                                     </div>
+                                </div>
 
-                                    <svg
-                                        className="size-6 shrink-0 self-center stroke-[#FF2D20]"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth="1.5"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                                        />
-                                    </svg>
-                                </a>
-
-                                <a
-                                    href="https://laravel-news.com"
-                                    className="flex items-start gap-4 rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300 hover:text-black/70 hover:ring-black/20 focus:outline-none focus-visible:ring-[#FF2D20] lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
-                                >
-                                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16">
-                                        <svg
-                                            className="size-5 sm:size-6"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <g fill="#FF2D20">
-                                                <path d="M8.75 4.5H5.5c-.69 0-1.25.56-1.25 1.25v4.75c0 .69.56 1.25 1.25 1.25h3.25c.69 0 1.25-.56 1.25-1.25V5.75c0-.69-.56-1.25-1.25-1.25Z" />
-                                                <path d="M24 10a3 3 0 0 0-3-3h-2V2.5a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2V20a3.5 3.5 0 0 0 3.5 3.5h17A3.5 3.5 0 0 0 24 20V10ZM3.5 21.5A1.5 1.5 0 0 1 2 20V3a.5.5 0 0 1 .5-.5h14a.5.5 0 0 1 .5.5v17c0 .295.037.588.11.874a.5.5 0 0 1-.484.625L3.5 21.5ZM22 20a1.5 1.5 0 1 1-3 0V9.5a.5.5 0 0 1 .5-.5H21a1 1 0 0 1 1 1v10Z" />
-                                                <path d="M12.751 6.047h2a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-2A.75.75 0 0 1 12 7.3v-.5a.75.75 0 0 1 .751-.753ZM12.751 10.047h2a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-2A.75.75 0 0 1 12 11.3v-.5a.75.75 0 0 1 .751-.753ZM4.751 14.047h10a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-10A.75.75 0 0 1 4 15.3v-.5a.75.75 0 0 1 .751-.753ZM4.75 18.047h7.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-7.5A.75.75 0 0 1 4 19.3v-.5a.75.75 0 0 1 .75-.753Z" />
-                                            </g>
+                                <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-start gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                         </svg>
                                     </div>
-
-                                    <div className="pt-3 sm:pt-5">
-                                        <h2 className="text-xl font-semibold text-black dark:text-white">
-                                            Laravel News
-                                        </h2>
-
-                                        <p className="mt-4 text-sm/relaxed">
-                                            Laravel News is a community driven
-                                            portal and newsletter aggregating
-                                            all of the latest and most important
-                                            news in the Laravel ecosystem,
-                                            including new package releases and
-                                            tutorials.
-                                        </p>
-                                    </div>
-
-                                    <svg
-                                        className="size-6 shrink-0 self-center stroke-[#FF2D20]"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth="1.5"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                                        />
-                                    </svg>
-                                </a>
-
-                                <div className="flex items-start gap-4 rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800">
-                                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16">
-                                        <svg
-                                            className="size-5 sm:size-6"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <g fill="#FF2D20">
-                                                <path d="M16.597 12.635a.247.247 0 0 0-.08-.237 2.234 2.234 0 0 1-.769-1.68c.001-.195.03-.39.084-.578a.25.25 0 0 0-.09-.267 8.8 8.8 0 0 0-4.826-1.66.25.25 0 0 0-.268.181 2.5 2.5 0 0 1-2.4 1.824.045.045 0 0 0-.045.037 12.255 12.255 0 0 0-.093 3.86.251.251 0 0 0 .208.214c2.22.366 4.367 1.08 6.362 2.118a.252.252 0 0 0 .32-.079 10.09 10.09 0 0 0 1.597-3.733ZM13.616 17.968a.25.25 0 0 0-.063-.407A19.697 19.697 0 0 0 8.91 15.98a.25.25 0 0 0-.287.325c.151.455.334.898.548 1.328.437.827.981 1.594 1.619 2.28a.249.249 0 0 0 .32.044 29.13 29.13 0 0 0 2.506-1.99ZM6.303 14.105a.25.25 0 0 0 .265-.274 13.048 13.048 0 0 1 .205-4.045.062.062 0 0 0-.022-.07 2.5 2.5 0 0 1-.777-.982.25.25 0 0 0-.271-.149 11 11 0 0 0-5.6 2.815.255.255 0 0 0-.075.163c-.008.135-.02.27-.02.406.002.8.084 1.598.246 2.381a.25.25 0 0 0 .303.193 19.924 19.924 0 0 1 5.746-.438ZM9.228 20.914a.25.25 0 0 0 .1-.393 11.53 11.53 0 0 1-1.5-2.22 12.238 12.238 0 0 1-.91-2.465.248.248 0 0 0-.22-.187 18.876 18.876 0 0 0-5.69.33.249.249 0 0 0-.179.336c.838 2.142 2.272 4 4.132 5.353a.254.254 0 0 0 .15.048c1.41-.01 2.807-.282 4.117-.802ZM18.93 12.957l-.005-.008a.25.25 0 0 0-.268-.082 2.21 2.21 0 0 1-.41.081.25.25 0 0 0-.217.2c-.582 2.66-2.127 5.35-5.75 7.843a.248.248 0 0 0-.09.299.25.25 0 0 0 .065.091 28.703 28.703 0 0 0 2.662 2.12.246.246 0 0 0 .209.037c2.579-.701 4.85-2.242 6.456-4.378a.25.25 0 0 0 .048-.189 13.51 13.51 0 0 0-2.7-6.014ZM5.702 7.058a.254.254 0 0 0 .2-.165A2.488 2.488 0 0 1 7.98 5.245a.093.093 0 0 0 .078-.062 19.734 19.734 0 0 1 3.055-4.74.25.25 0 0 0-.21-.41 12.009 12.009 0 0 0-10.4 8.558.25.25 0 0 0 .373.281 12.912 12.912 0 0 1 4.826-1.814ZM10.773 22.052a.25.25 0 0 0-.28-.046c-.758.356-1.55.635-2.365.833a.25.25 0 0 0-.022.48c1.252.43 2.568.65 3.893.65.1 0 .2 0 .3-.008a.25.25 0 0 0 .147-.444c-.526-.424-1.1-.917-1.673-1.465ZM18.744 8.436a.249.249 0 0 0 .15.228 2.246 2.246 0 0 1 1.352 2.054c0 .337-.08.67-.23.972a.25.25 0 0 0 .042.28l.007.009a15.016 15.016 0 0 1 2.52 4.6.25.25 0 0 0 .37.132.25.25 0 0 0 .096-.114c.623-1.464.944-3.039.945-4.63a12.005 12.005 0 0 0-5.78-10.258.25.25 0 0 0-.373.274c.547 2.109.85 4.274.901 6.453ZM9.61 5.38a.25.25 0 0 0 .08.31c.34.24.616.561.8.935a.25.25 0 0 0 .3.127.631.631 0 0 1 .206-.034c2.054.078 4.036.772 5.69 1.991a.251.251 0 0 0 .267.024c.046-.024.093-.047.141-.067a.25.25 0 0 0 .151-.23A29.98 29.98 0 0 0 15.957.764a.25.25 0 0 0-.16-.164 11.924 11.924 0 0 0-2.21-.518.252.252 0 0 0-.215.076A22.456 22.456 0 0 0 9.61 5.38Z" />
-                                            </g>
-                                        </svg>
-                                    </div>
-
-                                    <div className="pt-3 sm:pt-5">
-                                        <h2 className="text-xl font-semibold text-black dark:text-white">
-                                            Vibrant Ecosystem
-                                        </h2>
-
-                                        <p className="mt-4 text-sm/relaxed">
-                                            Laravel's robust library of
-                                            first-party tools and libraries,
-                                            such as{' '}
-                                            <a
-                                                href="https://forge.laravel.com"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white dark:focus-visible:ring-[#FF2D20]"
-                                            >
-                                                Forge
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://vapor.laravel.com"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Vapor
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://nova.laravel.com"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Nova
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://envoyer.io"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Envoyer
-                                            </a>
-                                            , and{' '}
-                                            <a
-                                                href="https://herd.laravel.com"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Herd
-                                            </a>{' '}
-                                            help you take your projects to the
-                                            next level. Pair them with powerful
-                                            open source libraries like{' '}
-                                            <a
-                                                href="https://laravel.com/docs/billing"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Cashier
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://laravel.com/docs/dusk"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Dusk
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://laravel.com/docs/broadcasting"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Echo
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://laravel.com/docs/horizon"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Horizon
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://laravel.com/docs/sanctum"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Sanctum
-                                            </a>
-                                            ,{' '}
-                                            <a
-                                                href="https://laravel.com/docs/telescope"
-                                                className="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                            >
-                                                Telescope
-                                            </a>
-                                            , and more.
+                                    <div>
+                                        <h4 className="text-sm font-bold text-emerald-950">
+                                            Sekolah Adiwiyata
+                                        </h4>
+                                        <p className="text-xs text-gray-600 mt-0.5 leading-normal">
+                                            Lingkungan edukasi asri, hemat energi &amp; berkelanjutan.
                                         </p>
                                     </div>
                                 </div>
                             </div>
-                        </main>
-
-                        <footer className="py-16 text-center text-sm text-black dark:text-white/70">
-                            Laravel v{laravelVersion} (PHP v{phpVersion})
-                        </footer>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </>
+            </section>
+
+            {/* SCHOOL NEWS SECTION */}
+            <section id="berita" className="py-20 bg-[#f7faf8] border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+                        <div>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                PUSAT INFORMASI RESMI
+                            </span>
+                            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0d2e23] tracking-tight mt-2">
+                                Kabar Terkini SMPN 2 Soreang
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Dokumentasi prestasi, agenda akademik berkala, dan siaran pengumuman penting bagi wali murid dan peserta didik.
+                            </p>
+                        </div>
+
+                        {auth?.user?.role === 'admin' ? (
+                            <Link
+                                href={route('admin.berita.index')}
+                                className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 border border-emerald-300 rounded-full px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm"
+                            >
+                                <span>Kelola Berita (Admin)</span>
+                                <span>→</span>
+                            </Link>
+                        ) : (
+                            <a
+                                href="#berita"
+                                className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 hover:underline"
+                            >
+                                <span>Arsip Berita &amp; Warta Lengkap</span>
+                                <span>→</span>
+                            </a>
+                        )}
+                    </div>
+
+                    {/* News Content */}
+                    {publishedNews.length === 0 ? (
+                        <div className="p-12 text-center bg-white rounded-2xl border border-gray-200">
+                            <p className="text-base font-semibold text-gray-700">Belum ada kabar berita yang dipublikasikan.</p>
+                            <p className="text-sm text-gray-400 mt-1">Berita terbaru sekolah akan ditampilkan segera setelah dirilis oleh bagian humas.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* Left: Featured News Card */}
+                            {featuredArticle && (
+                                <div className="lg:col-span-7 bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition duration-200 flex flex-col">
+                                    <div className="relative h-64 sm:h-80 w-full overflow-hidden bg-gray-100">
+                                        <img
+                                            src={
+                                                featuredArticle.gambar_path ||
+                                                'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80'
+                                            }
+                                            alt={featuredArticle.judul}
+                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                        />
+                                        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-sm">
+                                                {featuredArticle.kategori?.toUpperCase() || 'PRESTASI SISWA'}
+                                            </span>
+                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black/60 text-white backdrop-blur-sm">
+                                                UTAMA
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
+                                                <span>{formatDateIndo(featuredArticle.tanggal)}</span>
+                                                <span>•</span>
+                                                <span>3 Menit Baca</span>
+                                                <span>•</span>
+                                                <span>{featuredArticle.dibuat_oleh?.nama || 'Humas SMPN 2 Soreang'}</span>
+                                            </div>
+
+                                            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2.5 leading-snug hover:text-emerald-700 transition">
+                                                {featuredArticle.judul}
+                                            </h3>
+
+                                            <p className="text-sm text-gray-600 mt-3 leading-relaxed line-clamp-3">
+                                                {featuredArticle.ringkasan || featuredArticle.isi}
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+                                            <button
+                                                onClick={() => setActiveArticle(featuredArticle)}
+                                                className="text-emerald-700 font-bold text-sm hover:text-emerald-800 inline-flex items-center gap-1 group"
+                                            >
+                                                <span>Baca Laporan Lengkap</span>
+                                                <span className="group-hover:translate-x-1 transition-transform">→</span>
+                                            </button>
+                                            <span className="text-[11px] font-mono text-gray-400">
+                                                ID: {featuredArticle.slug?.slice(0, 12)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Right: List of Recent Articles */}
+                            <div className="lg:col-span-5 space-y-4">
+                                {secondaryArticles.map((article) => (
+                                    <div
+                                        key={article.id}
+                                        onClick={() => setActiveArticle(article)}
+                                        className="bg-white p-5 rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition duration-200 cursor-pointer flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <div className="flex items-center justify-between text-xs mb-1.5">
+                                                <span className="font-bold text-emerald-700 uppercase tracking-wider text-[11px]">
+                                                    {article.kategori}
+                                                </span>
+                                                <span className="text-gray-400">
+                                                    {formatDateIndo(article.tanggal)}
+                                                </span>
+                                            </div>
+                                            <h4 className="text-base font-bold text-gray-900 leading-snug hover:text-emerald-700 transition">
+                                                {article.judul}
+                                            </h4>
+                                            <p className="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">
+                                                {article.ringkasan || article.isi}
+                                            </p>
+                                        </div>
+                                        <div className="mt-4 pt-2 flex justify-between items-center text-xs">
+                                            <span className="font-semibold text-emerald-700 inline-flex items-center gap-1 hover:underline">
+                                                Selengkapnya →
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {secondaryArticles.length === 0 && (
+                                    <div className="p-6 rounded-2xl border border-dashed border-gray-200 text-center text-gray-400 text-xs">
+                                        Tidak ada berita arsip tambahan saat ini.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* SCHOOL ACTIVITIES AND FACILITIES GALLERY */}
+            <section id="galeri" className="py-20 bg-white border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header with category filters */}
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-10 gap-4">
+                        <div>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                DOKUMENTASI KAMPUS &amp; PRESTASI
+                            </span>
+                            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0d2e23] tracking-tight mt-2">
+                                Galeri Kegiatan &amp; Fasilitas Sekolah
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Keseruan dinamika pembelajaran, fasilitas modern, serta kebersamaan ekstrakurikuler siswa di SMPN 2 Soreang.
+                            </p>
+                        </div>
+
+                        {/* Filter Tabs */}
+                        <div className="flex flex-wrap gap-2">
+                            {['Semua', 'Ekstrakurikuler', 'Fasilitas', 'Seni & Budaya'].map((cat) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
+                                        selectedCategory === cat
+                                            ? 'bg-emerald-800 text-white shadow-sm'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Gallery Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredGallery.map((item) => (
+                            <div
+                                key={item.id}
+                                className={`relative rounded-2xl overflow-hidden shadow-md group ${
+                                    item.featured ? 'md:col-span-2 h-72 sm:h-80' : 'h-64 sm:h-72'
+                                } bg-gray-900`}
+                            >
+                                <img
+                                    src={item.image}
+                                    alt={item.title}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                                <div className="absolute bottom-5 left-5 right-5 text-white">
+                                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 uppercase tracking-wider">
+                                        {item.badge}
+                                    </span>
+                                    <h3 className="text-base sm:text-lg font-bold mt-2">
+                                        {item.title}
+                                    </h3>
+                                    <p className="text-xs text-gray-300 mt-1 line-clamp-2">
+                                        {item.caption}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* CONTACT AND LOCATION SECTION */}
+            <section id="kontak" className="py-20 bg-[#f7faf8] border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <div className="mb-10">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                            LAYANAN TERPADU &amp; KUNJUNGAN
+                        </span>
+                        <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0d2e23] tracking-tight mt-2">
+                            Terhubung Langsung dengan Tata Usaha &amp; Pengaduan
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-1 max-w-3xl">
+                            Kami siap melayani kebutuhan administrasi, legalisir ijazah, surat keterangan siswa, konsultasi bimbingan konseling (BK), serta pendaftaran peserta didik baru pada hari dan jam kerja operasional sekolah.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        {/* Left Side: 4 info cards + WhatsApp Action */}
+                        <div className="lg:col-span-6 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Jam Pelayanan */}
+                                <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                                    <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-900">Jam Pelayanan TU</h4>
+                                        <p className="text-xs text-gray-600 mt-1">Senin - Kamis: 07.30 - 15.00 WIB</p>
+                                        <p className="text-xs text-gray-600">Jumat: 07.30 - 14.30 WIB</p>
+                                    </div>
+                                </div>
+
+                                {/* Hotline WA */}
+                                <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                                    <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-900">Hotline WhatsApp</h4>
+                                        <p className="text-xs font-semibold text-emerald-800 mt-1">+62 812-2345-6819</p>
+                                        <p className="text-[11px] text-gray-400">Respons Cepat Hari Kerja</p>
+                                    </div>
+                                </div>
+
+                                {/* Surat Elektronik */}
+                                <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                                    <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-900">Surat Elektronik</h4>
+                                        <p className="text-xs text-gray-600 mt-1 font-mono">info@smpn2soreang.sch.id</p>
+                                        <p className="text-[11px] text-gray-400">Konfirmasi &amp; Kemitraan</p>
+                                    </div>
+                                </div>
+
+                                {/* Garda Pra & Wilayah */}
+                                <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                                    <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-900">Garda Pra &amp; Wilayah</h4>
+                                        <p className="text-xs text-gray-600 mt-1">Kec. Soreang, Kab. Bandung</p>
+                                        <p className="text-[11px] text-gray-400">Kode Pos 40911</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Wide Quick WhatsApp TU Action Card */}
+                            <div className="p-5 bg-emerald-950 text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-800 flex items-center justify-center flex-shrink-0">
+                                        <svg className="w-5 h-5 text-emerald-300" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold">Layanan Tata Usaha &amp; Informasi Cepat</h4>
+                                        <p className="text-xs text-emerald-300/80">Hubungi operator staf TU kami via WhatsApp untuk layanan instan.</p>
+                                    </div>
+                                </div>
+                                <a
+                                    href="https://wa.me/6281223456819"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap"
+                                >
+                                    Chat Staf TU →
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Right Side: Map & Coordinates Card */}
+                        <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-700 tracking-wider uppercase">
+                                    PETA LOKASI SMPN 2 SOREANG
+                                </span>
+                                <span className="text-[11px] font-mono text-gray-400">
+                                    -7.0289° S, 107.5218° E
+                                </span>
+                            </div>
+
+                            {/* Styled Map Graphic / Schematic */}
+                            <div className="relative h-64 sm:h-72 w-full bg-[#e8ede9] overflow-hidden flex items-center justify-center p-4">
+                                <svg className="w-full h-full text-emerald-800/20" viewBox="0 0 500 300" fill="none">
+                                    <rect width="500" height="300" fill="#f0f4f1" />
+                                    <path d="M 0 140 Q 200 120 500 160" stroke="#d5ded7" strokeWidth="28" />
+                                    <path d="M 180 0 L 220 300" stroke="#d5ded7" strokeWidth="20" />
+                                    <path d="M 360 0 L 320 300" stroke="#d5ded7" strokeWidth="16" />
+
+                                    <rect x="230" y="80" width="140" height="90" rx="8" fill="#144d3b" opacity="0.85" />
+                                    <rect x="250" y="95" width="40" height="30" rx="4" fill="#ffffff" opacity="0.3" />
+                                    <rect x="300" y="95" width="55" height="30" rx="4" fill="#ffffff" opacity="0.3" />
+
+                                    <rect x="130" y="70" width="70" height="110" rx="20" stroke="#10b981" strokeWidth="3" fill="#34d399" opacity="0.25" />
+                                    <circle cx="165" cy="125" r="15" stroke="#10b981" strokeWidth="2" />
+                                </svg>
+
+                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                                    <div className="bg-emerald-900 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-lg border border-emerald-400 flex items-center gap-1.5 animate-pulse">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                        Kampus SMPN 2 Soreang
+                                    </div>
+                                    <div className="w-3 h-3 bg-emerald-900 transform rotate-45 -mt-1.5"></div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                <div>
+                                    <h4 className="text-xs font-bold text-gray-900">
+                                        Kampus SMPN 2 Soreang
+                                    </h4>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">
+                                        Jl. Terusan Soreang No. 172, Katapang-Soreang, Kab. Bandung
+                                    </p>
+                                </div>
+                                <a
+                                    href="https://maps.google.com/?q=SMPN+2+Soreang"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="px-3.5 py-1.5 bg-[#0d2e23] hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                                >
+                                    <span>Buka Peta</span>
+                                    <span>↗</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* FOOTER */}
+            <footer className="bg-[#0b261d] text-emerald-100/90 border-t border-emerald-950">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
+                        {/* School Identity */}
+                        <div className="lg:col-span-4 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-emerald-800 border border-emerald-600/40 flex items-center justify-center text-white">
+                                    <svg className="w-6 h-6 text-emerald-300" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-bold text-base tracking-tight">
+                                        SMP NEGERI 2 SOREANG
+                                    </h3>
+                                    <p className="text-emerald-400 text-[10px] tracking-wider uppercase font-semibold">
+                                        KABUPATEN BANDUNG
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p className="text-xs text-emerald-200/70 leading-relaxed">
+                                Lembaga pendidikan menengah pertama berintegritas tinggi di Kabupaten Bandung yang berkomitmen memajukan riset inovasi sains, kurikulum merdeka terkini, serta luhur budi pekerti.
+                            </p>
+
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                <span className="px-2.5 py-1 rounded bg-emerald-900/80 border border-emerald-700/50 text-[10px] font-semibold text-emerald-300">
+                                    Akreditasi A (Unggul BAN-S/M)
+                                </span>
+                                <span className="px-2.5 py-1 rounded bg-emerald-900/80 border border-emerald-700/50 text-[10px] font-semibold text-emerald-300">
+                                    SPMB Berkelanjutan
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Navigasi Utama */}
+                        <div className="lg:col-span-2 space-y-3">
+                            <h4 className="text-white text-xs font-bold tracking-wider uppercase">
+                                NAVIGASI UTAMA
+                            </h4>
+                            <ul className="space-y-2 text-xs text-emerald-200/80">
+                                <li>
+                                    <a href="#" className="hover:text-white transition">Beranda Utama</a>
+                                </li>
+                                <li>
+                                    <a href="#sambutan" className="hover:text-white transition">Profil &amp; Guru</a>
+                                </li>
+                                <li>
+                                    <a href="#berita" className="hover:text-white transition">Prestasi Sekolah</a>
+                                </li>
+                                <li>
+                                    <a href="#kontak" className="hover:text-white transition">Alur PPDB 2026/2027</a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* Portal Digital */}
+                        <div className="lg:col-span-3 space-y-3">
+                            <h4 className="text-white text-xs font-bold tracking-wider uppercase">
+                                PORTAL DIGITAL
+                            </h4>
+                            <ul className="space-y-2 text-xs text-emerald-200/80">
+                                <li>
+                                    <Link href={route('login')} className="hover:text-white transition flex items-center gap-1.5">
+                                        <span>SIGES - Sistem Presensi Digital</span>
+                                    </Link>
+                                </li>
+                                <li>
+                                    <span className="hover:text-white transition cursor-pointer">e-Learning SMPN 2</span>
+                                </li>
+                                <li>
+                                    <span className="hover:text-white transition cursor-pointer">e-Rapor Kurikulum Merdeka</span>
+                                </li>
+                                <li>
+                                    <span className="hover:text-white transition cursor-pointer">Konseling &amp; Bimbingan (BK)</span>
+                                </li>
+                                <li>
+                                    <span className="hover:text-white transition cursor-pointer">Notifikasi WA Pintar (SIFAT)</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* Kontak & Live Stats */}
+                        <div className="lg:col-span-3 space-y-3">
+                            <h4 className="text-white text-xs font-bold tracking-wider uppercase">
+                                KONTAK &amp; STATISTIK
+                            </h4>
+                            <div className="space-y-1.5 text-xs text-emerald-200/80">
+                                <p>Jl. Terusan Kopo-Soreang, Katapang, Soreang, Kab. Bandung 40911</p>
+                                <p>Telepon: (022) 5891-2441</p>
+                                <p>humas@smpn2soreang.sch.id</p>
+                            </div>
+
+                            {/* Stats Card */}
+                            <div className="p-3 bg-emerald-900/60 rounded-xl border border-emerald-800 text-[11px] space-y-1 text-emerald-300">
+                                <div className="flex justify-between">
+                                    <span>Tahun Ajaran:</span>
+                                    <span className="text-white font-semibold">2025 / 2026</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Status Server:</span>
+                                    <span className="text-emerald-400 font-semibold inline-flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                        99.98% Aktif
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Strip */}
+                    <div className="mt-12 pt-6 border-t border-emerald-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-emerald-300/60 gap-4">
+                        <p>© 2026 SMP Negeri 2 Soreang. Hak Cipta Dilindungi Undang-Undang.</p>
+                        <div className="flex gap-6">
+                            <span className="hover:text-white transition cursor-pointer">Kebijakan Privasi</span>
+                            <span className="hover:text-white transition cursor-pointer">Keterbukaan Informasi</span>
+                            <span className="hover:text-white transition cursor-pointer">Peta Situs</span>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+
+            {/* FULL ARTICLE MODAL READER */}
+            {activeArticle && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div
+                        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="relative">
+                            {activeArticle.gambar_path && (
+                                <div className="w-full h-64 sm:h-72 overflow-hidden bg-gray-100">
+                                    <img
+                                        src={activeArticle.gambar_path}
+                                        alt={activeArticle.judul}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setActiveArticle(null)}
+                                className="absolute top-3 right-3 bg-black/60 hover:bg-black text-white rounded-full p-2 text-xs transition"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 sm:p-8">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                    {activeArticle.kategori?.toUpperCase()}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                    {formatDateIndo(activeArticle.tanggal)}
+                                </span>
+                            </div>
+
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
+                                {activeArticle.judul}
+                            </h2>
+
+                            <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
+                                <span>Penulis: {activeArticle.dibuat_oleh?.nama || 'Humas SMPN 2 Soreang'}</span>
+                            </div>
+
+                            {activeArticle.ringkasan && (
+                                <div className="mt-4 p-4 rounded-xl bg-emerald-50/70 text-emerald-950 text-sm italic border-l-4 border-emerald-600">
+                                    {activeArticle.ringkasan}
+                                </div>
+                            )}
+
+                            <div className="mt-6 text-sm text-gray-700 leading-relaxed whitespace-pre-line space-y-4">
+                                {activeArticle.isi}
+                            </div>
+
+                            <div className="mt-8 pt-4 border-t border-gray-100 flex justify-end">
+                                <button
+                                    onClick={() => setActiveArticle(null)}
+                                    className="px-5 py-2 rounded-full bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-semibold transition"
+                                >
+                                    Tutup Artikel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
