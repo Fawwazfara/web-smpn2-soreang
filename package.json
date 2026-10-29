@@ -23,6 +23,10 @@
         "vite": "^8.0.0"
     },
     "optionalDependencies": {
-        "@laravel/multiplex": "^0.4.1"
+        "@laravel/multiplex": "^0.4.1",
+        "lightningcss-win32-x64-msvc": "^1.33.0"
+    },
+    "dependencies": {
+        "@rolldown/binding-win32-x64-msvc": "^1.2.15"
     }
 }

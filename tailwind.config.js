@@ -13,7 +13,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Plus Jakarta Sans', 'Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['"Plus Jakarta Sans"', 'Figtree', ...defaultTheme.fontFamily.sans],
+                serif: ['"Playfair Display"', 'Georgia', ...defaultTheme.fontFamily.serif],
             },
             colors: {
                 surface: '#faf8ff',
@@ -60,7 +61,7 @@ export default {
                 'surface-container-low': '#f2f3ff',
                 'outline-variant': '#bec9c2',
                 'secondary-fixed-dim': '#b7c8e1',
-                'on-tertiary-fixed-variant': '#3b4a44',
+                'on-terti_ary-fixed-variant': '#3b4a44',
                 'inverse-on-surface': '#eef0ff',
             },
             spacing: {

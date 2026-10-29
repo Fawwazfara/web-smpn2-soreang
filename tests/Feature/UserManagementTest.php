@@ -58,6 +58,78 @@ class UserManagementTest extends TestCase
         ]);
     }
 
+    public function test_create_guru_requires_jenis_pegawai(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post('/users', [
+            'username' => '198001012005011099',
+            'nama' => 'Guru Tanpa Jenis Pegawai',
+            'role' => 'guru',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertSessionHasErrors('jenis_pegawai');
+        $this->assertDatabaseMissing('users', ['username' => '198001012005011099']);
+    }
+
+    public function test_admin_can_create_guru_piket_with_no_wa(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post('/users', [
+            'username' => 'piket01',
+            'nama' => 'Drs. Jajang Sukmana',
+            'role' => 'guru_piket',
+            'no_wa' => '6281234567890',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'username' => 'piket01',
+            'role' => 'guru_piket',
+            'no_wa' => '6281234567890',
+            'jenis_pegawai' => null,
+            'wajib_ganti_password' => true,
+        ]);
+    }
+
+    public function test_create_guru_piket_requires_no_wa(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post('/users', [
+            'username' => 'piket_tanpa_wa',
+            'nama' => 'Piket Tanpa WA',
+            'role' => 'guru_piket',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertSessionHasErrors('no_wa');
+        $this->assertDatabaseMissing('users', ['username' => 'piket_tanpa_wa']);
+    }
+
+    public function test_update_to_guru_piket_requires_no_wa(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $guru = User::factory()->create(['role' => 'guru', 'jenis_pegawai' => 'guru', 'no_wa' => null]);
+
+        $response = $this->actingAs($admin)->patch("/users/{$guru->id}", [
+            'username' => $guru->username,
+            'nama' => $guru->nama,
+            'role' => 'guru_piket',
+            'no_wa' => '',
+            'aktif' => true,
+        ]);
+
+        $response->assertSessionHasErrors('no_wa');
+    }
+
     public function test_admin_can_create_kepsek_without_jenis_pegawai(): void
     {
         $admin = User::factory()->admin()->create();
@@ -119,6 +191,7 @@ class UserManagementTest extends TestCase
             'username' => $guru->username,
             'nama' => 'Nama Diubah',
             'role' => 'guru_piket',
+            'no_wa' => '6281234567890',
             'aktif' => false,
         ])->assertRedirect(route('users.index'));
 
@@ -126,6 +199,7 @@ class UserManagementTest extends TestCase
 
         $this->assertSame('Nama Diubah', $guru->nama);
         $this->assertSame('guru_piket', $guru->role);
+        $this->assertSame('6281234567890', $guru->no_wa);
         $this->assertNull($guru->jenis_pegawai);
         $this->assertFalse($guru->aktif);
     }
@@ -139,7 +213,10 @@ class UserManagementTest extends TestCase
             ->delete("/users/{$guru->id}")
             ->assertRedirect(route('users.index'));
 
-        $this->assertDatabaseMissing('users', ['id' => $guru->id]);
+        $this->assertDatabaseHas('users', [
+            'id' => $guru->id,
+            'aktif' => false,
+        ]);
     }
 
     public function test_admin_can_not_manage_another_admin(): void
