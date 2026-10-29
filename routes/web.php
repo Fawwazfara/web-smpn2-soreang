@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Admin\BeritaController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\KelasController;
 use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\MapelController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TahunAjaranController;
 use App\Http\Controllers\UserController;
@@ -39,6 +41,25 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/kelas', [KelasController::class, 'store'])->name('kelas.store');
     Route::patch('/kelas/{kelas}', [KelasController::class, 'update'])->name('kelas.update');
     Route::delete('/kelas/{kelas}', [KelasController::class, 'destroy'])->name('kelas.destroy');
+
+    Route::get('/mapel', [MapelController::class, 'index'])->name('mapel.index');
+    Route::post('/mapel', [MapelController::class, 'store'])->name('mapel.store');
+    Route::patch('/mapel/{mapel}', [MapelController::class, 'update'])->name('mapel.update');
+    Route::delete('/mapel/{mapel}', [MapelController::class, 'destroy'])->name('mapel.destroy');
+
+    Route::post('/jam-pelajaran', [JamPelajaranController::class, 'store'])->name('jam-pelajaran.store');
+    Route::patch('/jam-pelajaran/{jamPelajaran}', [JamPelajaranController::class, 'update'])->name('jam-pelajaran.update');
+    Route::delete('/jam-pelajaran/{jamPelajaran}', [JamPelajaranController::class, 'destroy'])->name('jam-pelajaran.destroy');
+
+    // Route aliases for English naming
+    Route::get('/subjects', [MapelController::class, 'index'])->name('subjects.index');
+    Route::post('/subjects', [MapelController::class, 'store'])->name('subjects.store');
+    Route::patch('/subjects/{mapel}', [MapelController::class, 'update'])->name('subjects.update');
+    Route::delete('/subjects/{mapel}', [MapelController::class, 'destroy'])->name('subjects.destroy');
+
+    Route::post('/time-slots', [JamPelajaranController::class, 'store'])->name('time-slots.store');
+    Route::patch('/time-slots/{jamPelajaran}', [JamPelajaranController::class, 'update'])->name('time-slots.update');
+    Route::delete('/time-slots/{jamPelajaran}', [JamPelajaranController::class, 'destroy'])->name('time-slots.destroy');
 
     Route::get('/admin/berita', [BeritaController::class, 'index'])->name('admin.berita.index');
     Route::post('/admin/berita', [BeritaController::class, 'store'])->name('admin.berita.store');
