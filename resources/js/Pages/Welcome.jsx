@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
+import ArticleImage from '@/Components/ArticleImage';
 
 // Default gallery data matching the screenshot
 const GALLERY_ITEMS = [
@@ -419,16 +420,20 @@ export default function Welcome({ auth, berita = [] }) {
                             {/* Left: Featured News Card */}
                             {featuredArticle && (
                                 <div className="lg:col-span-7 bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition duration-200 flex flex-col">
-                                    <div className="relative h-64 sm:h-80 w-full overflow-hidden bg-gray-100">
-                                        <img
+                                    <div className="relative w-full">
+                                        <ArticleImage
                                             src={
                                                 featuredArticle.gambar_path ||
                                                 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80'
                                             }
                                             alt={featuredArticle.judul}
-                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                            aspectRatio="16/9"
+                                            showBadge
+                                            badgeText={featuredArticle.kategori?.toUpperCase() || 'PRESTASI SISWA'}
+                                            onClick={() => setActiveArticle(featuredArticle)}
+                                            enableLightbox
                                         />
-                                        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                                        <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-20">
                                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-sm">
                                                 {featuredArticle.kategori?.toUpperCase() || 'PRESTASI SISWA'}
                                             </span>
@@ -558,19 +563,19 @@ export default function Welcome({ auth, berita = [] }) {
                             <div
                                 key={item.id}
                                 className={`relative rounded-2xl overflow-hidden shadow-md group ${
-                                    item.featured ? 'md:col-span-2 h-72 sm:h-80' : 'h-64 sm:h-72'
-                                } bg-gray-900`}
+                                    item.featured ? 'md:col-span-2' : ''
+                                }`}
+                                style={{ aspectRatio: item.featured ? '16/9' : '4/3' }}
                             >
-                                <img
+                                <ArticleImage
                                     src={item.image}
                                     alt={item.title}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
+                                    aspectRatio={item.featured ? '16/9' : '4/3'}
+                                    showBadge
+                                    badgeText={item.badge}
+                                    enableLightbox
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-                                <div className="absolute bottom-5 left-5 right-5 text-white">
-                                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 uppercase tracking-wider">
-                                        {item.badge}
-                                    </span>
+                                <div className="absolute bottom-5 left-5 right-5 text-white z-20">
                                     <h3 className="text-base sm:text-lg font-bold mt-2">
                                         {item.title}
                                     </h3>
@@ -874,22 +879,22 @@ export default function Welcome({ auth, berita = [] }) {
             {activeArticle && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
                     <div
-                        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200"
+                        className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="relative">
                             {activeArticle.gambar_path && (
-                                <div className="w-full h-64 sm:h-72 overflow-hidden bg-gray-100">
-                                    <img
-                                        src={activeArticle.gambar_path}
-                                        alt={activeArticle.judul}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
+                                <ArticleImage
+                                    src={activeArticle.gambar_path}
+                                    alt={activeArticle.judul}
+                                    aspectRatio="16/9"
+                                    enableLightbox
+                                    className="max-h-[60vh]"
+                                />
                             )}
                             <button
                                 onClick={() => setActiveArticle(null)}
-                                className="absolute top-3 right-3 bg-black/60 hover:bg-black text-white rounded-full p-2 text-xs transition"
+                                className="absolute top-3 right-3 bg-black/60 hover:bg-black text-white rounded-full p-2 text-xs transition z-20"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

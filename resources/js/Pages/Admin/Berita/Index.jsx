@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
 import TextInput from '@/Components/TextInput';
+import ArticleImage from '@/Components/ArticleImage';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -346,13 +347,12 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-16 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
                                                             {item.gambar_path ? (
-                                                                <img
+                                                                <ArticleImage
                                                                     src={item.gambar_path}
                                                                     alt={item.judul}
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => {
-                                                                        e.currentTarget.style.display = 'none';
-                                                                    }}
+                                                                    aspectRatio="4/3"
+                                                                    className="w-16 h-12"
+                                                                    enableLightbox
                                                                 />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -574,14 +574,17 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                         {/* Image Options: Upload File OR URL */}
                         <div className="border-t border-gray-100 pt-3">
                             <InputLabel value="Gambar Berita (Pilih File atau Masukkan URL)" />
+                            <p className="mt-1 text-xs text-gray-500 italic">
+                                Disarankan rasio 16:9. Pamflet/poster portrait tetap tampil utuh tanpa terpotong.
+                            </p>
                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1">
-                                        Unggah File Gambar (Maks 5MB)
+                                        Unggah File Gambar (Maks 2MB)
                                     </label>
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/webp"
                                         onChange={handleImageFileChange}
                                         className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                                     />
@@ -604,11 +607,11 @@ export default function Index({ berita, filters, kategoriList, flash }) {
 
                             {/* Image Preview */}
                             {imagePreviewUrl && (
-                                <div className="mt-3 relative w-full h-36 rounded-lg overflow-hidden bg-gray-50 border border-gray-200">
-                                    <img
+                                <div className="mt-3">
+                                    <ArticleImage
                                         src={imagePreviewUrl}
-                                        alt="Preview"
-                                        className="w-full h-full object-cover"
+                                        alt="Preview gambar"
+                                        aspectRatio="16/9"
                                     />
                                     <button
                                         type="button"
@@ -695,11 +698,12 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                         </div>
 
                         {previewItem.gambar_path && (
-                            <div className="mt-4 w-full h-56 rounded-lg overflow-hidden bg-gray-100">
-                                <img
+                            <div className="mt-4">
+                                <ArticleImage
                                     src={previewItem.gambar_path}
                                     alt={previewItem.judul}
-                                    className="w-full h-full object-cover"
+                                    aspectRatio="16/9"
+                                    enableLightbox
                                 />
                             </div>
                         )}
