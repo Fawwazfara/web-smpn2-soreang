@@ -538,8 +538,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         Ctrl K
                                     </span>
                                 </div>
-                            </form> 
-                            </>
+                            </form>
 
                         )}
                     </div>
