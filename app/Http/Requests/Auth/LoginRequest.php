@@ -42,7 +42,16 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('username', 'password'), $this->boolean('remember'))) {
+        $user = \App\Models\User::where('username', $this->string('username'))->first();
+        if ($user && ! $user->aktif && \Illuminate\Support\Facades\Hash::check($this->string('password'), $user->password)) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'username' => 'Akun Anda dinonaktifkan. Silakan hubungi administrator.',
+            ]);
+        }
+
+        if (! Auth::attempt(array_merge($this->only('username', 'password'), ['aktif' => true]), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

@@ -17,13 +17,43 @@ class UserController extends Controller
     /**
      * Display a listing of the manageable users.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $query = User::query()->where('role', '!=', 'admin');
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($role = $request->input('role')) {
+            if (in_array($role, ['guru', 'guru_piket', 'kepsek'], true)) {
+                $query->where('role', $role);
+            }
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->input('status');
+            if ($status === 'aktif') {
+                $query->where('aktif', true);
+            } elseif ($status === 'nonaktif') {
+                $query->where('aktif', false);
+            }
+        }
+
         return Inertia::render('Users/Index', [
-            'users' => User::query()
-                ->where('role', '!=', 'admin')
-                ->orderBy('nama')
-                ->get(['id', 'username', 'nama', 'email', 'no_wa', 'role', 'jenis_pegawai', 'aktif']),
+            'users' => $query->orderBy('nama')->get(['id', 'username', 'nama', 'email', 'no_wa', 'role', 'jenis_pegawai', 'aktif']),
+            'filters' => $request->only(['search', 'role', 'status']),
+            'counts' => [
+                'total' => User::where('role', '!=', 'admin')->count(),
+                'guru' => User::where('role', 'guru')->count(),
+                'guru_piket' => User::where('role', 'guru_piket')->count(),
+                'kepsek' => User::where('role', 'kepsek')->count(),
+                'nonaktif' => User::where('role', '!=', 'admin')->where('aktif', false)->count(),
+            ],
         ]);
     }
 
@@ -69,7 +99,25 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified user.
+     * Toggle active status of the specified user.
+     */
+    public function toggleStatus(Request $request, User $user): RedirectResponse
+    {
+        $this->ensureManageable($user);
+
+        if ($user->is($request->user())) {
+            throw ValidationException::withMessages([
+                'user' => 'Tidak dapat mengubah status akun sendiri.',
+            ]);
+        }
+
+        $user->update(['aktif' => ! $user->aktif]);
+
+        return redirect()->route('users.index');
+    }
+
+    /**
+     * Deactivate the specified user.
      */
     public function destroy(Request $request, User $user): RedirectResponse
     {
