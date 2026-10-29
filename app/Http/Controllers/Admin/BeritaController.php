@@ -70,6 +70,15 @@ class BeritaController extends Controller
     {
         $data = $request->validated();
 
+        // Handle pin: max 3 pinned articles
+        if ($request->boolean('is_pinned')) {
+            $pinnedCount = Pengumuman::where('is_pinned', true)->count();
+            if ($pinnedCount >= 3) {
+                return back()->withErrors(['is_pinned' => 'Maksimal 3 berita yang bisa disematkan. Lepas pin berita lain dulu.'])->withInput();
+            }
+            $data['pinned_at'] = now();
+        }
+
         if ($request->hasFile('gambar')) {
             $file = $request->file('gambar');
             $filename = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
@@ -97,6 +106,20 @@ class BeritaController extends Controller
     {
         $data = $request->validated();
 
+        // Handle pin toggle
+        $wasPinned = $berita->is_pinned;
+        $willBePinned = $request->boolean('is_pinned');
+
+        if ($willBePinned && !$wasPinned) {
+            $pinnedCount = Pengumuman::where('is_pinned', true)->count();
+            if ($pinnedCount >= 3) {
+                return back()->withErrors(['is_pinned' => 'Maksimal 3 berita yang bisa disematkan. Lepas pin berita lain dulu.'])->withInput();
+            }
+            $data['pinned_at'] = now();
+        } elseif (!$willBePinned && $wasPinned) {
+            $data['pinned_at'] = null;
+        }
+
         if ($request->hasFile('gambar')) {
             $file = $request->file('gambar');
             $filename = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
@@ -116,13 +139,22 @@ class BeritaController extends Controller
     }
 
     /**
-     * Remove the specified news article.
+     * Toggle pin status of a berita (quick action from list).
      */
-    public function destroy(Pengumuman $berita): RedirectResponse
+    public function togglePin(Request $request, Pengumuman $berita): RedirectResponse
     {
-        $berita->delete();
+        if ($berita->is_pinned) {
+            $berita->update(['is_pinned' => false, 'pinned_at' => null]);
+            return back()->with('success', 'Pin berita dilepas.');
+        }
 
-        return redirect()->route('admin.berita.index')->with('success', 'Berita berhasil dihapus.');
+        $pinnedCount = Pengumuman::where('is_pinned', true)->count();
+        if ($pinnedCount >= 3) {
+            return back()->withErrors(['is_pinned' => 'Maksimal 3 berita yang bisa disematkan. Lepas pin berita lain dulu.']);
+        }
+
+        $berita->update(['is_pinned' => true, 'pinned_at' => now()]);
+        return back()->with('success', 'Berita disematkan di slider beranda.');
     }
 }
 

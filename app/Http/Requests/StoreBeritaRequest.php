@@ -26,6 +26,7 @@ class StoreBeritaRequest extends FormRequest
             'gambar_path' => ['nullable', 'string', 'max:1000'],
             'tanggal' => ['required', 'date'],
             'status' => ['required', 'in:draf,terbit'],
+            'is_pinned' => ['sometimes', 'boolean'],
         ];
     }
 

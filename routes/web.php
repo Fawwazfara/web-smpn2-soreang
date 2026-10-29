@@ -44,6 +44,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/berita', [BeritaController::class, 'store'])->name('admin.berita.store');
     Route::post('/admin/berita/{berita}', [BeritaController::class, 'update'])->name('admin.berita.update');
     Route::patch('/admin/berita/{berita}', [BeritaController::class, 'update']);
+    Route::patch('/admin/berita/{berita}/toggle-pin', [BeritaController::class, 'togglePin'])->name('admin.berita.toggle-pin');
     Route::delete('/admin/berita/{berita}', [BeritaController::class, 'destroy'])->name('admin.berita.destroy');
 });
 

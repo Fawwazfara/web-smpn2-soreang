@@ -69,21 +69,15 @@ export default function Welcome({ auth, berita = [] }) {
     const [showArrows, setShowArrows] = useState(false);
     const sliderRef = useRef(null);
 
-    // Published news from props - already sorted by date DESC from backend
+    // Published news from props - already sorted by backend: pinned first (pinned_at DESC), then by tanggal DESC
     const publishedNews = useMemo(() => {
         return Array.isArray(berita) ? berita : [];
     }, [berita]);
 
-    const featuredArticle = publishedNews[0] || null;
-    // Slider: next 8 articles after featured (terbaru ke terlama, tanpa duplikat)
-    const secondaryArticles = useMemo(() => {
-        return publishedNews.slice(1, 9); // max 8 berita
-    }, [publishedNews]);
-
     // Slider navigation
     const scrollSlider = (direction) => {
         if (!sliderRef.current) return;
-        const cardWidth = 320; // card width + gap (304px + 16px gap)
+        const cardWidth = 340; // card width + gap (320px + 20px gap)
         sliderRef.current.scrollBy({
             left: direction * cardWidth,
             behavior: 'smooth'
@@ -403,10 +397,10 @@ export default function Welcome({ auth, berita = [] }) {
             </section>
 
             {/* SCHOOL NEWS SECTION */}
-            <section id="berita" className="py-20 bg-[#f7faf8] border-b border-gray-100">
+<section id="berita" className="py-20 bg-[#f7faf8] border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+                    {/* Header with navigation arrows */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4 relative">
                         <div>
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
@@ -420,198 +414,137 @@ export default function Welcome({ auth, berita = [] }) {
                             </p>
                         </div>
 
+                        {/* Navigation arrows in header */}
+                        {showArrows && (
+                            <div className="flex items-center gap-2 ml-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => scrollSlider(-1)}
+                                    onKeyDown={handleKeyDown}
+                                    disabled={sliderScrollLeft <= 10}
+                                    aria-label="Berita sebelumnya"
+                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => scrollSlider(1)}
+                                    onKeyDown={handleKeyDown}
+                                    disabled={sliderRef.current && sliderScrollLeft >= sliderRef.current.scrollWidth - sliderRef.current.clientWidth - 10}
+                                    aria-label="Berita berikutnya"
+                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
+
                         {auth?.user?.role === 'admin' ? (
                             <Link
                                 href={route('admin.berita.index')}
                                 className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 border border-emerald-300 rounded-full px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm"
                             >
                                 <span>Kelola Berita (Admin)</span>
-                                <span>→</span>
+                                <span>&rarr;</span>
                             </Link>
                         ) : (
                             <a
                                 href="#berita"
                                 className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 hover:underline"
                             >
-                                <span>Arsip Berita &amp; Warta Lengkap</span>
-                                <span>→</span>
+                                <span>Arsip Berita & Warta Lengkap</span>
+                                <span>&rarr;</span>
                             </a>
                         )}
                     </div>
 
-                    {/* News Content */}
+                    {/* News Content - Single full-width slider */}
                     {publishedNews.length === 0 ? (
                         <div className="p-12 text-center bg-white rounded-2xl border border-gray-200">
-                            <p className="text-base font-semibold text-gray-700">Belum ada kabar berita yang dipublikasikan.</p>
+                            <p className="text-base font-semibold text-gray-700">Belum ada berita saat ini.</p>
                             <p className="text-sm text-gray-400 mt-1">Berita terbaru sekolah akan ditampilkan segera setelah dirilis oleh bagian humas.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                            {/* Left: Featured News Card */}
-                            {featuredArticle && (
-                                <div className="lg:col-span-7 bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition duration-200 flex flex-col">
-                                    <div className="relative w-full">
-                                        <ArticleImage
-                                            src={
-                                                featuredArticle.gambar_path ||
-                                                'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80'
-                                            }
-                                            alt={featuredArticle.judul}
-                                            aspectRatio="16/9"
-                                            showBadge
-                                            badgeText={featuredArticle.kategori?.toUpperCase() || 'PRESTASI SISWA'}
-                                            onClick={() => setActiveArticle(featuredArticle)}
-                                            enableLightbox
-                                        />
-                                        <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-20">
-                                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-sm">
-                                                {featuredArticle.kategori?.toUpperCase() || 'PRESTASI SISWA'}
-                                            </span>
-                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black/60 text-white backdrop-blur-sm">
-                                                UTAMA
-                                            </span>
+                        <div className="relative">
+                            {/* Slider container */}
+                            <div
+                                ref={sliderRef}
+                                onScroll={handleSliderScroll}
+                                onKeyDown={handleKeyDown}
+                                tabIndex={0}
+                                className="flex gap-4 overflow-x-auto scroll-snap-x scroll-snap-mandatory scroll-behavior-smooth pb-4 -ml-4 pl-4"
+                                style={{
+                                    scrollbarWidth: 'none',
+                                    msOverflowStyle: 'none',
+                                    WebkitOverflowScrolling: 'touch'
+                                }}
+                            >
+                                {publishedNews.map((article) => (
+                                    <article
+                                        key={article.id}
+                                        onClick={() => setActiveArticle(article)}
+                                        className="flex-shrink-0 w-[85vw] sm:w-[320px] scroll-snap-start bg-white rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
+                                        style={{ borderColor: article.is_pinned ? '#006C4A' : '#e5e7eb' }}
+                                    >
+                                        <div className="relative h-48 w-full overflow-hidden bg-gray-100 rounded-t-2xl">
+                                            <ArticleImage
+                                                src={
+                                                    article.gambar_path ||
+                                                    'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80'
+                                                }
+                                                alt={article.judul}
+                                                aspectRatio="16/9"
+                                                showBadge
+                                                badgeText={article.kategori}
+                                                enableLightbox
+                                            />
+                                            {/* Pin badge for pinned articles */}
+                                            {article.is_pinned && (
+                                                <div className="absolute top-3 right-3 z-20">
+                                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                        </svg>
+                                                        Disematkan
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-
-                                    <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
-                                                <span>{formatDateIndo(featuredArticle.tanggal)}</span>
-                                                <span>•</span>
-                                                <span>3 Menit Baca</span>
-                                                <span>•</span>
-                                                <span>{featuredArticle.dibuat_oleh?.nama || 'Humas SMPN 2 Soreang'}</span>
+                                        <div className="p-5 flex-1 flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex items-center justify-between text-xs mb-1.5">
+                                                    <span className="font-bold text-emerald-700 uppercase tracking-wider text-[11px]">
+                                                        {article.kategori}
+                                                    </span>
+                                                    <span className="text-gray-400">
+                                                        {formatDateIndo(article.tanggal)}
+                                                    </span>
+                                                </div>
+                                                <h4 className="text-base font-bold text-gray-900 leading-snug hover:text-emerald-700 transition line-clamp-2">
+                                                    {article.judul}
+                                                </h4>
+                                                <p className="text-xs text-gray-500 mt-2 line-clamp-3 leading-relaxed">
+                                                    {article.ringkasan || article.isi}
+                                                </p>
                                             </div>
-
-                                            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2.5 leading-snug hover:text-emerald-700 transition">
-                                                {featuredArticle.judul}
-                                            </h3>
-
-                                            <p className="text-sm text-gray-600 mt-3 leading-relaxed line-clamp-3">
-                                                {featuredArticle.ringkasan || featuredArticle.isi}
-                                            </p>
-                                        </div>
-
-                                        <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                                            <button
-                                                onClick={() => setActiveArticle(featuredArticle)}
-                                                className="text-emerald-700 font-bold text-sm hover:text-emerald-800 inline-flex items-center gap-1 group"
-                                            >
-                                                <span>Baca Laporan Lengkap</span>
-                                                <span className="group-hover:translate-x-1 transition-transform">→</span>
-                                            </button>
-                                            <span className="text-[11px] font-mono text-gray-400">
-                                                ID: {featuredArticle.slug?.slice(0, 12)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Right: Horizontal Slider of Recent Articles */}
-                            <div className="lg:col-span-5">
-                                {secondaryArticles.length === 0 ? (
-                                    <div className="p-6 rounded-2xl border border-dashed border-gray-200 text-center text-gray-400 text-xs">
-                                        Tidak ada berita arsip tambahan saat ini.
-                                    </div>
-                                ) : (
-                                    <div className="relative">
-                                        {/* Navigation arrows */}
-                                        {showArrows && (
-                                            <div className="absolute top-0 right-0 z-10 flex items-center gap-2 -translate-y-1/2 pr-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => scrollSlider(-1)}
-                                                    onKeyDown={handleKeyDown}
-                                                    disabled={sliderScrollLeft <= 10}
-                                                    aria-label="Berita sebelumnya"
-                                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                                    </svg>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => scrollSlider(1)}
-                                                    onKeyDown={handleKeyDown}
-                                                    disabled={sliderRef.current && sliderScrollLeft >= sliderRef.current.scrollWidth - sliderRef.current.clientWidth - 10}
-                                                    aria-label="Berita berikutnya"
-                                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </button>
+                                            <div className="mt-4 pt-2 flex justify-between items-center text-xs border-t border-gray-100">
+                                                <span className="font-semibold text-emerald-700 inline-flex items-center gap-1 hover:underline">
+                                                    Selengkapnya &rarr;
+                                                </span>
                                             </div>
-                                        )}
-
-                                        {/* Slider container */}
-                                        <div
-                                            ref={sliderRef}
-                                            onScroll={handleSliderScroll}
-                                            onKeyDown={handleKeyDown}
-                                            tabIndex={0}
-                                            className="flex gap-4 overflow-x-auto scroll-snap-x scroll-snap-mandatory scroll-behavior-smooth pb-4 -ml-4 pl-4"
-                                            style={{
-                                                scrollbarWidth: 'none',
-                                                msOverflowStyle: 'none',
-                                                WebkitOverflowScrolling: 'touch'
-                                            }}
-                                        >
-                                            {secondaryArticles.map((article) => (
-                                                <article
-                                                    key={article.id}
-                                                    onClick={() => setActiveArticle(article)}
-                                                    className="flex-shrink-0 w-[85vw] sm:w-[304px] scroll-snap-start bg-white rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
-                                                >
-                                                    <div className="relative h-48 w-full overflow-hidden bg-gray-100 rounded-t-2xl">
-                                                        <ArticleImage
-                                                            src={
-                                                                article.gambar_path ||
-                                                                'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80'
-                                                            }
-                                                            alt={article.judul}
-                                                            aspectRatio="4/3"
-                                                            showBadge
-                                                            badgeText={article.kategori}
-                                                            enableLightbox
-                                                        />
-                                                    </div>
-                                                    <div className="p-5 flex-1 flex flex-col justify-between">
-                                                        <div>
-                                                            <div className="flex items-center justify-between text-xs mb-1.5">
-                                                                <span className="font-bold text-emerald-700 uppercase tracking-wider text-[11px]">
-                                                                    {article.kategori}
-                                                                </span>
-                                                                <span className="text-gray-400">
-                                                                    {formatDateIndo(article.tanggal)}
-                                                                </span>
-                                                            </div>
-                                                            <h4 className="text-base font-bold text-gray-900 leading-snug hover:text-emerald-700 transition line-clamp-1">
-                                                                {article.judul}
-                                                            </h4>
-                                                            <p className="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">
-                                                                {article.ringkasan || article.isi}
-                                                            </p>
-                                                        </div>
-                                                        <div className="mt-4 pt-2 flex justify-between items-center text-xs border-t border-gray-100">
-                                                            <span className="font-semibold text-emerald-700 inline-flex items-center gap-1 hover:underline">
-                                                                Selengkapnya →
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </article>
-                                            ))}
                                         </div>
-                                    </div>
-                                )}
+                                    </article>
+                                ))}
                             </div>
                         </div>
                     )}
                 </div>
             </section>
-
             {/* SCHOOL ACTIVITIES AND FACILITIES GALLERY */}
             <section id="galeri" className="py-20 bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
