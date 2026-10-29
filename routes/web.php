@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\BeritaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KelasController;
+use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TahunAjaranController;
 use App\Http\Controllers\UserController;
@@ -9,13 +11,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+Route::get('/', [LandingPageController::class, 'index'])->name('welcome');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -43,6 +39,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/kelas', [KelasController::class, 'store'])->name('kelas.store');
     Route::patch('/kelas/{kelas}', [KelasController::class, 'update'])->name('kelas.update');
     Route::delete('/kelas/{kelas}', [KelasController::class, 'destroy'])->name('kelas.destroy');
+
+    Route::get('/admin/berita', [BeritaController::class, 'index'])->name('admin.berita.index');
+    Route::post('/admin/berita', [BeritaController::class, 'store'])->name('admin.berita.store');
+    Route::post('/admin/berita/{berita}', [BeritaController::class, 'update'])->name('admin.berita.update');
+    Route::patch('/admin/berita/{berita}', [BeritaController::class, 'update']);
+    Route::delete('/admin/berita/{berita}', [BeritaController::class, 'destroy'])->name('admin.berita.destroy');
 });
 
 require __DIR__.'/auth.php';
