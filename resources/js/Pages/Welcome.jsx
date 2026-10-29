@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import ArticleImage from '@/Components/ArticleImage';
 
 // Default gallery data matching the screenshot
@@ -65,14 +65,44 @@ export default function Welcome({ auth, berita = [] }) {
     const [selectedCategory, setSelectedCategory] = useState('Semua');
     const [activeArticle, setActiveArticle] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [sliderScrollLeft, setSliderScrollLeft] = useState(0);
+    const [showArrows, setShowArrows] = useState(false);
+    const sliderRef = useRef(null);
 
-    // Published news from props
+    // Published news from props - already sorted by date DESC from backend
     const publishedNews = useMemo(() => {
         return Array.isArray(berita) ? berita : [];
     }, [berita]);
 
     const featuredArticle = publishedNews[0] || null;
-    const secondaryArticles = publishedNews.slice(1, 4);
+    // Slider: next 8 articles after featured (terbaru ke terlama, tanpa duplikat)
+    const secondaryArticles = useMemo(() => {
+        return publishedNews.slice(1, 9); // max 8 berita
+    }, [publishedNews]);
+
+    // Slider navigation
+    const scrollSlider = (direction) => {
+        if (!sliderRef.current) return;
+        const cardWidth = 320; // card width + gap (304px + 16px gap)
+        sliderRef.current.scrollBy({
+            left: direction * cardWidth,
+            behavior: 'smooth'
+        });
+    };
+
+    const handleSliderScroll = () => {
+        if (!sliderRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+        setSliderScrollLeft(scrollLeft);
+        // Show arrows only if content overflows
+        setShowArrows(maxScroll > 10);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'ArrowLeft') scrollSlider(-1);
+        if (e.key === 'ArrowRight') scrollSlider(1);
+    };
 
     const filteredGallery = useMemo(() => {
         if (selectedCategory === 'Semua') return GALLERY_ITEMS;
@@ -478,41 +508,102 @@ export default function Welcome({ auth, berita = [] }) {
                                 </div>
                             )}
 
-                            {/* Right: List of Recent Articles */}
-                            <div className="lg:col-span-5 space-y-4">
-                                {secondaryArticles.map((article) => (
-                                    <div
-                                        key={article.id}
-                                        onClick={() => setActiveArticle(article)}
-                                        className="bg-white p-5 rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition duration-200 cursor-pointer flex flex-col justify-between"
-                                    >
-                                        <div>
-                                            <div className="flex items-center justify-between text-xs mb-1.5">
-                                                <span className="font-bold text-emerald-700 uppercase tracking-wider text-[11px]">
-                                                    {article.kategori}
-                                                </span>
-                                                <span className="text-gray-400">
-                                                    {formatDateIndo(article.tanggal)}
-                                                </span>
-                                            </div>
-                                            <h4 className="text-base font-bold text-gray-900 leading-snug hover:text-emerald-700 transition">
-                                                {article.judul}
-                                            </h4>
-                                            <p className="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">
-                                                {article.ringkasan || article.isi}
-                                            </p>
-                                        </div>
-                                        <div className="mt-4 pt-2 flex justify-between items-center text-xs">
-                                            <span className="font-semibold text-emerald-700 inline-flex items-center gap-1 hover:underline">
-                                                Selengkapnya →
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {secondaryArticles.length === 0 && (
+                            {/* Right: Horizontal Slider of Recent Articles */}
+                            <div className="lg:col-span-5">
+                                {secondaryArticles.length === 0 ? (
                                     <div className="p-6 rounded-2xl border border-dashed border-gray-200 text-center text-gray-400 text-xs">
                                         Tidak ada berita arsip tambahan saat ini.
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        {/* Navigation arrows */}
+                                        {showArrows && (
+                                            <div className="absolute top-0 right-0 z-10 flex items-center gap-2 -translate-y-1/2 pr-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => scrollSlider(-1)}
+                                                    onKeyDown={handleKeyDown}
+                                                    disabled={sliderScrollLeft <= 10}
+                                                    aria-label="Berita sebelumnya"
+                                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => scrollSlider(1)}
+                                                    onKeyDown={handleKeyDown}
+                                                    disabled={sliderRef.current && sliderScrollLeft >= sliderRef.current.scrollWidth - sliderRef.current.clientWidth - 10}
+                                                    aria-label="Berita berikutnya"
+                                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Slider container */}
+                                        <div
+                                            ref={sliderRef}
+                                            onScroll={handleSliderScroll}
+                                            onKeyDown={handleKeyDown}
+                                            tabIndex={0}
+                                            className="flex gap-4 overflow-x-auto scroll-snap-x scroll-snap-mandatory scroll-behavior-smooth pb-4 -ml-4 pl-4"
+                                            style={{
+                                                scrollbarWidth: 'none',
+                                                msOverflowStyle: 'none',
+                                                WebkitOverflowScrolling: 'touch'
+                                            }}
+                                        >
+                                            {secondaryArticles.map((article) => (
+                                                <article
+                                                    key={article.id}
+                                                    onClick={() => setActiveArticle(article)}
+                                                    className="flex-shrink-0 w-[85vw] sm:w-[304px] scroll-snap-start bg-white rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
+                                                >
+                                                    <div className="relative h-48 w-full overflow-hidden bg-gray-100 rounded-t-2xl">
+                                                        <ArticleImage
+                                                            src={
+                                                                article.gambar_path ||
+                                                                'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80'
+                                                            }
+                                                            alt={article.judul}
+                                                            aspectRatio="4/3"
+                                                            showBadge
+                                                            badgeText={article.kategori}
+                                                            enableLightbox
+                                                        />
+                                                    </div>
+                                                    <div className="p-5 flex-1 flex flex-col justify-between">
+                                                        <div>
+                                                            <div className="flex items-center justify-between text-xs mb-1.5">
+                                                                <span className="font-bold text-emerald-700 uppercase tracking-wider text-[11px]">
+                                                                    {article.kategori}
+                                                                </span>
+                                                                <span className="text-gray-400">
+                                                                    {formatDateIndo(article.tanggal)}
+                                                                </span>
+                                                            </div>
+                                                            <h4 className="text-base font-bold text-gray-900 leading-snug hover:text-emerald-700 transition line-clamp-1">
+                                                                {article.judul}
+                                                            </h4>
+                                                            <p className="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">
+                                                                {article.ringkasan || article.isi}
+                                                            </p>
+                                                        </div>
+                                                        <div className="mt-4 pt-2 flex justify-between items-center text-xs border-t border-gray-100">
+                                                            <span className="font-semibold text-emerald-700 inline-flex items-center gap-1 hover:underline">
+                                                                Selengkapnya →
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </article>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
