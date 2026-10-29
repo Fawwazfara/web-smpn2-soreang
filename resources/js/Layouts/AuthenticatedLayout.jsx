@@ -57,6 +57,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </NavLink>
 
                                         <NavLink
+                                            href={route('mapel.index')}
+                                            active={route().current('mapel.*') || route().current('subjects.*')}
+                                        >
+                                            Mapel & Jam
+                                        </NavLink>
+
+                                        <NavLink
                                             href={route('admin.berita.index')}
                                             active={route().current('admin.berita.*')}
                                         >
@@ -190,6 +197,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current('kelas.*')}
                                 >
                                     Kelas
+                                </ResponsiveNavLink>
+
+                                <ResponsiveNavLink
+                                    href={route('mapel.index')}
+                                    active={route().current('mapel.*') || route().current('subjects.*')}
+                                >
+                                    Mapel & Jam
                                 </ResponsiveNavLink>
 
                                 <ResponsiveNavLink
