@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -94,5 +95,54 @@ class RoleDashboardTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect(route('login'));
+    }
+
+    public function test_login_redirects_each_role_to_their_matching_dashboard(): void
+    {
+        $roleMatrix = [
+            ['role' => 'admin', 'component' => 'Admin/Dashboard', 'extra' => []],
+            ['role' => 'guru', 'component' => 'Guru/Dashboard', 'extra' => ['jenis_pegawai' => 'guru']],
+            ['role' => 'guru_piket', 'component' => 'Piket/Dashboard', 'extra' => ['no_wa' => '6281234567890']],
+            ['role' => 'kepsek', 'component' => 'Kepsek/Dashboard', 'extra' => []],
+        ];
+
+        foreach ($roleMatrix as $item) {
+            $user = User::factory()->create(array_merge([
+                'username' => 'user_'.$item['role'],
+                'password' => 'password123',
+                'role' => $item['role'],
+            ], $item['extra']));
+
+            $loginResponse = $this->post('/login', [
+                'username' => $user->username,
+                'password' => 'password123',
+            ]);
+
+            $loginResponse->assertRedirect(route('dashboard', absolute: false));
+
+            $dashboardResponse = $this->get('/dashboard');
+            $dashboardResponse->assertOk();
+            $dashboardResponse->assertInertia(fn (Assert $page) => $page
+                ->component($item['component'])
+            );
+
+            $this->post('/logout');
+        }
+    }
+
+    public function test_role_middleware_allows_matching_roles_and_blocks_others(): void
+    {
+        Route::middleware(['web', 'auth', 'role:guru,guru_piket'])
+            ->get('/_test-role-middleware', fn () => response('ok'));
+
+        $guru = User::factory()->create(['role' => 'guru', 'jenis_pegawai' => 'guru']);
+        $piket = User::factory()->create(['role' => 'guru_piket', 'no_wa' => '6281234567890']);
+        $kepsek = User::factory()->create(['role' => 'kepsek']);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($guru)->get('/_test-role-middleware')->assertOk();
+        $this->actingAs($piket)->get('/_test-role-middleware')->assertOk();
+        $this->actingAs($kepsek)->get('/_test-role-middleware')->assertForbidden();
+        $this->actingAs($admin)->get('/_test-role-middleware')->assertForbidden();
     }
 }

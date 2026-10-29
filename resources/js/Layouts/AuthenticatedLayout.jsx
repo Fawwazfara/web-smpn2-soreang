@@ -1,4 +1,5 @@
 import Dropdown from '@/Components/Dropdown';
+import { getSidebarNavByRole } from '@/Config/sidebarNav';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -173,6 +174,24 @@ function IconAcademicCap({ className = 'w-4 h-4' }) {
     );
 }
 
+const SIDEBAR_ICONS = {
+    'grid-4': IconGrid4,
+    'layout-split': IconLayoutSplit,
+    broadcast: IconBroadcast,
+    'users-group': IconUsersGroup,
+    'id-card': IconIdCard,
+    'door-room': IconDoorRoom,
+    'open-book': IconOpenBook,
+    'map-pin': IconMapPinBase,
+    checklist: IconCheckListRect,
+    'doc-fold': IconDocFold,
+    'calendar-grid': IconCalendarGrid,
+    'portrait-badge': IconPortraitBadge,
+    star: IconStarOutline,
+    key: IconKey,
+    lock: IconLock,
+};
+
 export default function AuthenticatedLayout({ header, children }) {
     const { auth, tahunAjaranAktif } = usePage().props;
     const user = auth.user;
@@ -223,115 +242,15 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     };
 
-    const getNavGroups = () => {
-        // Exact match to Figma Image 2 (Admin Sidebar)
-        if (user.role === 'admin') {
-            return [
-                {
-                    title: 'MAIN',
-                    items: [
-                        { label: 'Dashboard', route: 'dashboard', icon: IconGrid4 },
-                        { label: 'Live Monitor Kelas', route: null, icon: IconBroadcast, liveDot: true },
-                    ],
-                },
-                {
-                    title: 'MASTER DATA',
-                    items: [
-                        { label: 'Data Siswa', route: null, icon: IconUsersGroup },
-                        { label: 'Data Guru & Staff', route: 'users.index', icon: IconIdCard },
-                        { label: 'Kelas & Rombel', route: 'kelas.index', icon: IconDoorRoom },
-                        { label: 'Mata Pelajaran', route: null, icon: IconOpenBook },
-                    ],
-                },
-                {
-                    title: 'ATTENDANCE',
-                    items: [
-                        { label: 'Presensi Guru (Geofence)', route: null, icon: IconMapPinBase },
-                        { label: 'Presensi Siswa', route: null, icon: IconCheckListRect },
-                        { label: 'Rekap & Laporan', route: null, icon: IconDocFold },
-                    ],
-                },
-                {
-                    title: 'JADWAL & SESI',
-                    items: [
-                        { label: 'Matriks Jadwal KBM', route: null, icon: IconCalendarGrid },
-                        {
-                            label: 'Guru Piket & Pengganti',
-                            route: 'users.index',
-                            routeParams: { role: 'guru_piket' },
-                            exactRoleMatch: 'guru_piket',
-                            icon: IconPortraitBadge,
-                        },
-                    ],
-                },
-            ];
-        }
-
-        if (user.role === 'kepsek') {
-            return [
-                {
-                    title: 'MAIN',
-                    items: [
-                        { label: 'Dashboard', route: 'dashboard', icon: IconGrid4 },
-                        { label: 'Live Monitor Kelas', route: null, icon: IconBroadcast, liveDot: true },
-                    ],
-                },
-                {
-                    title: 'ATTENDANCE',
-                    items: [
-                        { label: 'Presensi Guru (Geofence)', route: null, icon: IconMapPinBase },
-                        { label: 'Presensi Siswa', route: null, icon: IconCheckListRect },
-                        { label: 'Rekap & Laporan', route: null, icon: IconDocFold },
-                    ],
-                },
-                {
-                    title: 'JADWAL & SESI',
-                    items: [
-                        { label: 'Matriks Jadwal KBM', route: null, icon: IconCalendarGrid },
-                        { label: 'Guru Piket & Pengganti', route: null, icon: IconPortraitBadge },
-                    ],
-                },
-            ];
-        }
-
-        if (user.role === 'guru_piket') {
-            return [
-                {
-                    title: null,
-                    items: [
-                        { label: 'Dashboard Piket', route: 'dashboard', icon: IconLayoutSplit },
-                        { label: 'Buka Sesi Pengganti', route: null, icon: IconKey },
-                        { label: 'Monitor Kelas Terkunci', route: null, icon: IconLock },
-                        { label: 'Presensi Mandiri', route: null, icon: IconPortraitBadge },
-                        { label: 'Jadwal Piket', route: null, icon: IconCalendarGrid },
-                        { label: 'Jurnal Kelas', route: null, icon: IconOpenBook },
-                    ],
-                },
-            ];
-        }
-
-        // Exact match to Figma Image 4 (Guru Sidebar)
-        return [
-            {
-                title: null,
-                items: [
-                    { label: 'Dashboard Guru', route: 'dashboard', icon: IconLayoutSplit },
-                    { label: 'Presensi Mandiri', route: null, icon: IconPortraitBadge },
-                    { label: 'Presensi Siswa / KBM', route: null, icon: IconCheckListRect },
-                    { label: 'Jadwal Mengajar', route: null, icon: IconCalendarGrid },
-                    { label: 'Jurnal Kelas', route: null, icon: IconOpenBook },
-                    { label: 'Nilai & Rapor', route: null, icon: IconStarOutline },
-                ],
-            },
-        ];
-    };
-
-    const navGroups = getNavGroups();
+    const navGroups = getSidebarNavByRole(user.role);
 
     const isRouteActive = (item) => {
         if (!item.route) return false;
         if (item.exactRoleMatch) {
             return false;
+        }
+        if (item.activePattern) {
+            return route().current(item.activePattern);
         }
         if (item.route === 'dashboard') {
             return route().current('dashboard');
@@ -362,7 +281,10 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="space-y-1">
                         {group.items.map((item, iIdx) => {
                             const active = isRouteActive(item);
-                            const Icon = item.icon;
+                            const Icon =
+                                (typeof item.icon === 'string'
+                                    ? SIDEBAR_ICONS[item.icon]
+                                    : item.icon) ?? IconGrid4;
 
                             if (!item.route) {
                                 return (

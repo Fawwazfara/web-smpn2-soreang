@@ -109,11 +109,17 @@ export default function Index({ users = [], filters = {}, counts = {} }) {
     const toggleStatus = (user) => {
         const actionText = user.aktif ? 'menonaktifkan' : 'mengaktifkan kembali';
         if (confirm(`Apakah Anda yakin ingin ${actionText} akun "${user.nama}"?`)) {
-            router.patch(
-                route('users.toggle-status', user.id),
-                {},
-                { preserveScroll: true }
-            );
+            if (user.aktif) {
+                router.delete(route('users.destroy', user.id), {
+                    preserveScroll: true,
+                });
+            } else {
+                router.patch(
+                    route('users.toggle-status', user.id),
+                    {},
+                    { preserveScroll: true }
+                );
+            }
         }
     };
 
