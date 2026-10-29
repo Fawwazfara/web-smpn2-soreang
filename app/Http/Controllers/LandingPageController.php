@@ -18,8 +18,11 @@ class LandingPageController extends Controller
         $berita = Pengumuman::query()
             ->where('status', 'terbit')
             ->with('dibuatOleh:id,nama')
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('pinned_at')
             ->orderByDesc('tanggal')
             ->orderByDesc('id')
+            ->limit(10)
             ->get();
 
         return Inertia::render('Welcome', [

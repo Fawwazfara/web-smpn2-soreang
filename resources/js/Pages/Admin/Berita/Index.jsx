@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
 import TextInput from '@/Components/TextInput';
+import ArticleImage from '@/Components/ArticleImage';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -30,6 +31,7 @@ const emptyBerita = {
     gambar_path: '',
     tanggal: new Date().toISOString().slice(0, 10),
     status: 'terbit',
+    is_pinned: false,
 };
 
 const formatDate = (value) =>
@@ -100,6 +102,7 @@ export default function Index({ berita, filters, kategoriList, flash }) {
             gambar_path: item.gambar_path || '',
             tanggal: item.tanggal?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
             status: item.status || 'terbit',
+            is_pinned: item.is_pinned || false,
         });
         setShowModal(true);
     };
@@ -318,6 +321,9 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                         <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-emerald-950">
                                             Status
                                         </th>
+                                        <th className="px-6 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-emerald-950">
+                                            Pin
+                                        </th>
                                         <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-emerald-950">
                                             Aksi
                                         </th>
@@ -326,7 +332,7 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                 <tbody className="divide-y divide-gray-100 bg-white">
                                     {filteredBerita.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                                                 <div className="flex flex-col items-center justify-center">
                                                     <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -346,13 +352,12 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-16 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
                                                             {item.gambar_path ? (
-                                                                <img
+                                                                <ArticleImage
                                                                     src={item.gambar_path}
                                                                     alt={item.judul}
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => {
-                                                                        e.currentTarget.style.display = 'none';
-                                                                    }}
+                                                                    aspectRatio="4/3"
+                                                                    className="w-16 h-12"
+                                                                    enableLightbox
                                                                 />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -399,8 +404,36 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                                         </span>
                                                     )}
                                                 </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    {item.is_pinned && (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                            </svg>
+                                                            <span>Disematkan</span>
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex items-center justify-end gap-2">
+                                                        {/* Quick Pin/Unpin Button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                router.patch(route('admin.berita.toggle-pin', item.id), {
+                                                                    preserveScroll: true,
+                                                                });
+                                                            }}
+                                                            className={`p-1.5 rounded-lg transition ${
+                                                                item.is_pinned
+                                                                    ? 'text-emerald-600 hover:bg-emerald-50'
+                                                                    : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'
+                                                            }`}
+                                                            title={item.is_pinned ? 'Lepas pin berita' : 'Sematkan berita'}
+                                                        >
+                                                            <svg className="w-4 h-4" fill={item.is_pinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                            </svg>
+                                                        </button>
                                                         <button
                                                             onClick={() => setPreviewItem(item)}
                                                             className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition"
@@ -540,6 +573,23 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                 </select>
                                 <InputError message={errors.status} className="mt-1" />
                             </div>
+
+                            {/* Pin Toggle */}
+                            <div className="sm:col-span-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.is_pinned}
+                                        onChange={(e) => setData('is_pinned', e.target.checked)}
+                                        className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 focus:ring-2"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Sematkan di awal (pin)</span>
+                                </label>
+                                <p className="mt-1 text-xs text-gray-500 italic">
+                                    Berita yang disematkan selalu muncul paling awal di slider beranda. Maksimal 3 berita.
+                                </p>
+                                <InputError message={errors.is_pinned} className="mt-1" />
+                            </div>
                         </div>
 
                         {/* Ringkasan */}
@@ -574,14 +624,17 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                         {/* Image Options: Upload File OR URL */}
                         <div className="border-t border-gray-100 pt-3">
                             <InputLabel value="Gambar Berita (Pilih File atau Masukkan URL)" />
+                            <p className="mt-1 text-xs text-gray-500 italic">
+                                Disarankan rasio 16:9. Pamflet/poster portrait tetap tampil utuh tanpa terpotong.
+                            </p>
                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1">
-                                        Unggah File Gambar (Maks 5MB)
+                                        Unggah File Gambar (Maks 2MB)
                                     </label>
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/webp"
                                         onChange={handleImageFileChange}
                                         className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                                     />
@@ -604,11 +657,11 @@ export default function Index({ berita, filters, kategoriList, flash }) {
 
                             {/* Image Preview */}
                             {imagePreviewUrl && (
-                                <div className="mt-3 relative w-full h-36 rounded-lg overflow-hidden bg-gray-50 border border-gray-200">
-                                    <img
+                                <div className="mt-3">
+                                    <ArticleImage
                                         src={imagePreviewUrl}
-                                        alt="Preview"
-                                        className="w-full h-full object-cover"
+                                        alt="Preview gambar"
+                                        aspectRatio="16/9"
                                     />
                                     <button
                                         type="button"
@@ -695,11 +748,12 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                         </div>
 
                         {previewItem.gambar_path && (
-                            <div className="mt-4 w-full h-56 rounded-lg overflow-hidden bg-gray-100">
-                                <img
+                            <div className="mt-4">
+                                <ArticleImage
                                     src={previewItem.gambar_path}
                                     alt={previewItem.judul}
-                                    className="w-full h-full object-cover"
+                                    aspectRatio="16/9"
+                                    enableLightbox
                                 />
                             </div>
                         )}

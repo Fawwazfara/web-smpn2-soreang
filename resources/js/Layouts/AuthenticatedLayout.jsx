@@ -372,6 +372,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         {renderNavItems()}
                     </div>
 
+
                     {/* Exact Bottom Status Presensi Card + Footer (Figma Image 4) */}
                     <div className="px-3.5 pb-4 pt-2 space-y-3 bg-white">
                         <div className="rounded-2xl bg-[#F6F9F8] p-3.5">
@@ -382,6 +383,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <span className="inline-flex items-center rounded-full bg-[#92F4C2] px-2.5 py-0.5 text-[10.5px] font-bold text-[#064E3B]">
                                     Aktif
                                 </span>
+                               
                             </div>
                             <p className="mt-2 text-[12px] font-medium text-slate-600 leading-snug">
                                 Terkoneksi Radius GPS Sekolah (25m)
@@ -505,6 +507,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             </svg>
                         </button>
 
+
                         {isOperationalRole ? (
                             <div className="flex items-center gap-2 text-slate-800">
                                 <IconAcademicCap className="w-4 h-4 text-[#0F382A]" />
@@ -535,7 +538,9 @@ export default function AuthenticatedLayout({ header, children }) {
                                         Ctrl K
                                     </span>
                                 </div>
-                            </form>
+                            </form> 
+                            </>
+
                         )}
                     </div>
 

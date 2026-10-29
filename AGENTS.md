@@ -89,3 +89,61 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 - Keputusan terbaru ada di `docs/PRD.md` Bagian 9. Poin yang masih terbuka ada di Bagian 10: batasan monitoring admin, aturan jam absen harian, token konfirmasi, reset password akun tanpa email, dan paket fonnte produksi.
 - Setiap selesai satu bagian, AI **wajib melaporkan** ke user: apa yang dibuat (file/fitur), apa yang diubah, dan apa yang perlu dikonfirmasi. Jangan lanjut ke pekerjaan berikutnya sebelum dikonfirmasi.
 - Rencana pembagian fitur, checklist, dan pengerjaan detail dicatat PM saat sudah ditentukan.
+
+## Design System & UI/UX Guidelines (Wajib Dipatuhi)
+Gunakan acuan tema UI frontend berikut secara konsisten (jangan pakai warna/font lain di luar ini):
+
+### Font
+- Plus Jakarta Sans untuk headline, body, dan label (import dari Google Fonts).
+- Headline: warna navy gelap `#111C2D`
+- Body & label: abu gelap kehijauan `~#3F463F`
+
+### Warna Utama & Tonal
+- Primary   : `#143823` (hijau tua)
+- Secondary : `#006C4A` (hijau emerald)
+- Tertiary  : `#82F5C1` (mint)
+- Neutral   : `#111C2D` (navy gelap)
+
+### Warna Pendukung
+- Background halaman : biru-lavender sangat muda `~#CFD9F0`
+- Surface/card       : biru muda pucat `~#E8EEFF`
+- Border tipis       : abu kebiruan `~#C5CEE3`
+- Danger/hapus       : merah `~#C41E1E`
+- Primary pekat (tombol utama) : `~#002114`
+- Inverted (tombol)  : navy `~#263147`
+
+### CSS Variables
+```css
+:root {
+  --primary: #143823;
+  --primary-strong: #002114;
+  --secondary: #006C4A;
+  --tertiary: #82F5C1;
+  --neutral: #111C2D;
+  --bg: #CFD9F0;
+  --surface: #E8EEFF;
+  --border: #C5CEE3;
+  --text-head: #111C2D;
+  --text-body: #3F463F;
+  --danger: #C41E1E;
+  --font: 'Plus Jakarta Sans', sans-serif;
+}
+```
+
+### Komponen & Gaya Umum
+- **Card/panel**: radius besar (`24-28px`), background `--surface`, tanpa shadow berat, padding lega.
+- **Tombol**:
+  - Primary: fill `--primary-strong`, teks putih.
+  - Secondary: fill `--surface` (biru muda), teks gelap.
+  - Inverted: fill navy `~#263147`, teks putih.
+  - Outlined: transparan, border 1px abu, teks gelap.
+  - Radius kecil (`6-8px`), teks medium/semibold.
+- **Search field**: fill biru muda pucat, border 1px tipis, ikon search di kiri, placeholder "Search", radius kecil (`6-8px`).
+- **Progress bar**: tebal tipis (`~6-8px`), radius penuh, track biru muda pucat, fill hijau (`--primary-strong` atau `--secondary`).
+- **Bottom nav**: container pill/rounded penuh warna `--surface`; item aktif = lingkaran hijau tua (`--primary-strong`) dengan ikon putih; item tidak aktif = ikon outline gelap tanpa background.
+- **Icon button**: kotak rounded (`~8px`), fill hijau tua, ikon hijau terang/mint.
+- **Button dengan label**: fill `--primary`, ikon + teks hijau terang/mint.
+- **Floating/round icon buttons (lingkaran)**: gelap/hitam-hijau, hijau `--secondary`, hitam, dan merah untuk aksi hapus; ikon putih.
+- **Ikon**: gaya outline/line, stroke tipis, konsisten (misal Lucide).
+- **Gaya umum**: Clean, modern, rounded, dominan hijau tua + mint di atas background biru muda lembut. Kontras tinggi untuk teks, spacing lega, tanpa gradient berlebihan.
+

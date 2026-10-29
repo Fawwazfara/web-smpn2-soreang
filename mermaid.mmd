@@ -66,6 +66,7 @@ erDiagram
         bigint id PK
         string kode UK
         string nama
+        string kelompok_kurikulum
     }
 
     JAM_PELAJARAN {
@@ -193,6 +194,8 @@ erDiagram
         string gambar_path
         date tanggal
         string status "draf atau terbit"
+        boolean is_pinned "dipin di slider beranda"
+        timestamp pinned_at "waktu dipin"
         bigint dibuat_oleh FK
     }
 
