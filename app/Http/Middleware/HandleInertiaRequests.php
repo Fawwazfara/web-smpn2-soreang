@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\TahunAjaran;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -34,6 +36,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'tahunAjaranAktif' => fn () => $request->user() && Schema::hasTable('tahun_ajaran')
+                ? TahunAjaran::where('aktif', true)->first(['id', 'nama', 'semester'])
+                : null,
         ];
     }
 }
