@@ -149,7 +149,7 @@ export default function Welcome({ auth, berita = [] }) {
                                     href={route('login')}
                                     className="bg-white hover:bg-emerald-50 text-[#0d2e23] px-4 py-2 rounded-full font-bold text-xs tracking-wide transition shadow-sm inline-flex items-center gap-1.5"
                                 >
-                                    Login Admin
+                                    Login
                                 </Link>
                             )}
                         </div>
