@@ -1,17 +1,58 @@
 import Modal from '@/Components/Modal';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }) {
     const user = usePage().props.auth.user;
     const [now, setNow] = useState(() => new Date());
     const [showPiketModal, setShowPiketModal] = useState(false);
+    const [cameraActive, setCameraActive] = useState(false);
+    const [cameraNote, setCameraNote] = useState(null);
+    const videoRef = useRef(null);
+    const streamRef = useRef(null);
 
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((track) => track.stop());
+            }
+        };
     }, []);
+
+    const startLiveCamera = async () => {
+        if (!navigator?.mediaDevices?.getUserMedia) {
+            setCameraNote('Perangkat/browser belum mengizinkan akses kamera live.');
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user' },
+                audio: false,
+            });
+            streamRef.current = stream;
+            setCameraActive(true);
+            setCameraNote(null);
+            requestAnimationFrame(() => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            });
+        } catch {
+            setCameraNote('Izin akses kamera ditolak atau kamera tidak ditemukan.');
+        }
+    };
+
+    const handleSubmitCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+        }
+        setCameraActive(false);
+        setCameraNote('Selfie kamera live berhasil diverifikasi dalam mode pratinjau dashboard.');
+    };
 
     const hour = now.getHours();
     const sundaGreeting =
@@ -56,7 +97,7 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
             <Head title="Dashboard Guru - SiSADA" />
 
             <div className="space-y-6">
-                {/* Dark Forest Green Hero Banner (Exact Figma Screenshot 3) */}
+                {/* 1. Dark Forest Green Hero Banner (Exact Figma Guru Dashboard) */}
                 <div className="rounded-2xl bg-gradient-to-br from-[#082B1F] via-[#0D392A] to-[#0A2F22] p-6 text-white shadow-sm">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                         <div>
@@ -92,7 +133,7 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                         </div>
                     </div>
 
-                    {/* Hero Footer Strip (Exact Figma Screenshot 3) */}
+                    {/* Hero Footer Strip */}
                     <div className="mt-5 pt-3.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="flex items-center gap-2.5 text-xs text-[#D5EFE4]">
                             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#34D399] text-[#064E3B]">
@@ -131,7 +172,7 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                     </div>
                 </div>
 
-                {/* 2-Column Main Content (Exact Figma Screenshot 3) */}
+                {/* 2. Two-Column Main Content */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     {/* Left Column (5 cols): Presensi Pagi Mandiri */}
                     <div className="lg:col-span-5">
@@ -152,66 +193,108 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                                 </span>
                             </div>
 
-                            {/* Live Camera Viewfinder Frame (Exact Figma HUD + Strictly No Gallery Upload) */}
-                            <div className="relative mt-4 aspect-[4/3] rounded-2xl overflow-hidden border border-[#DCE6E1] bg-gradient-to-b from-[#2B3E38] via-[#1C332B] to-[#0E221B] p-4 flex flex-col justify-between">
-                                <div className="flex items-center justify-between text-[10px] font-mono">
-                                    <span className="text-[#8CE9BE] font-semibold tracking-wider">
-                                        FACIAL RECOGNITION v2.0
-                                    </span>
-                                    <span className="rounded bg-[#0A2018]/90 border border-[#34D399]/50 px-2 py-0.5 text-[#6EE7B7] font-bold leading-tight">
-                                        TRACK-01
-                                    </span>
-                                </div>
-
-                                {/* Biometric Face-Tracking Frame */}
-                                <div className="relative mx-auto my-auto h-36 w-36 flex flex-col items-center justify-center">
-                                    <span className="absolute left-0 top-0 h-6 w-6 border-l-2 border-t-2 border-[#34D399]" />
-                                    <span className="absolute right-0 top-0 h-6 w-6 border-r-2 border-t-2 border-[#34D399]" />
-                                    <span className="absolute bottom-0 left-0 h-6 w-6 border-b-2 border-l-2 border-[#34D399]" />
-                                    <span className="absolute bottom-0 right-0 h-6 w-6 border-b-2 border-r-2 border-[#34D399]" />
-
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-[#6EE7B7] ring-1 ring-[#34D399]/40 backdrop-blur-xs">
-                                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" strokeWidth="1.6" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                                        </svg>
+                            {/* Live Camera Viewfinder Frame (Strictly Live Camera Only) */}
+                            <div className="relative mt-4 aspect-[4/3] rounded-2xl overflow-hidden border border-[#DCE6E1] bg-gradient-to-b from-[#6B7E78] via-[#3A524A] to-[#172B24]">
+                                {cameraActive ? (
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
+                                    />
+                                ) : (
+                                    /* Realistic Soft-Focused Classroom Backdrop & Portrait Silhouette */
+                                    <div className="absolute inset-0 overflow-hidden">
+                                        <div className="absolute inset-x-0 top-0 h-8 bg-[#DDE5E2]/90 border-b border-white/30 px-3 flex items-center justify-between text-[9px] text-slate-600 font-semibold">
+                                            <span>SiSADA Camera Preview</span>
+                                            <span>☀️ 28°C</span>
+                                        </div>
+                                        <div className="absolute -left-6 top-12 h-24 w-28 rounded-xl bg-[#C2B39B]/35 blur-md" />
+                                        <div className="absolute right-2 top-14 h-28 w-36 rounded-xl bg-[#9AB1A8]/30 blur-md" />
+                                        {/* Portrait Silhouette */}
+                                        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pointer-events-none">
+                                            <div className="h-20 w-20 rounded-full bg-gradient-to-b from-[#D8B49A] to-[#B58A6D] shadow-md ring-2 ring-white/15 flex items-center justify-center">
+                                                {/* Glasses detail */}
+                                                <div className="flex items-center gap-1 opacity-75">
+                                                    <span className="h-3.5 w-5 rounded border-2 border-[#231F20]" />
+                                                    <span className="h-0.5 w-1.5 bg-[#231F20]" />
+                                                    <span className="h-3.5 w-5 rounded border-2 border-[#231F20]" />
+                                                </div>
+                                            </div>
+                                            <div className="-mt-2 h-24 w-48 rounded-t-[44px] bg-gradient-to-b from-[#2B3735] via-[#1F2A28] to-[#131C1A] shadow-inner" />
+                                        </div>
                                     </div>
-                                    <span className="mt-2 font-mono text-[9px] font-bold tracking-widest text-[#6EE7B7]">
-                                        VERIFYING IDENTITY..
-                                    </span>
-                                </div>
+                                )}
 
-                                {/* Bottom Location & Date Overlay */}
-                                <div className="rounded-xl border border-white/10 bg-[#0A221A]/85 px-3 py-2 backdrop-blur-xs flex items-center gap-2.5 text-white">
-                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#18543E] text-[#6EE7B7]">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                                        </svg>
+                                {/* HUD Overlay Layer */}
+                                <div className="relative z-10 h-full p-3.5 flex flex-col justify-between">
+                                    <div className="pt-5 flex items-start justify-center">
+                                        {/* Biometric Face-Tracking Frame */}
+                                        <div className="relative h-36 w-36 flex flex-col items-center justify-between py-2">
+                                            <span className="absolute left-0 top-0 h-6 w-6 border-l-2 border-t-2 border-[#34D399]" />
+                                            <span className="absolute right-0 top-0 h-6 w-6 border-r-2 border-t-2 border-[#34D399]" />
+                                            <span className="absolute bottom-0 left-0 h-6 w-6 border-b-2 border-l-2 border-[#34D399]" />
+                                            <span className="absolute bottom-0 right-0 h-6 w-6 border-b-2 border-r-2 border-[#34D399]" />
+
+                                            <span className="text-[7.5px] font-mono font-bold tracking-widest text-[#8CE9BE] drop-shadow">
+                                                FACIAL RECOGNITION v2.0
+                                            </span>
+
+                                            <span className="absolute -right-7 -top-2 rounded-md bg-[#0D271E]/90 border border-[#34D399]/60 px-2 py-0.5 font-mono text-[9px] font-bold text-[#8CE9BE] leading-tight">
+                                                TRACK-
+                                                <br />
+                                                01
+                                            </span>
+
+                                            <div className="w-full h-px bg-[#34D399]/50" />
+
+                                            <span className="font-mono text-[8px] font-bold tracking-widest text-[#6EE7B7] drop-shadow">
+                                                VERIFYING IDENTITY..
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="truncate text-[11px] font-bold text-white">
-                                            {formattedFullDate}
-                                        </p>
-                                        <p className="truncate text-[9.5px] font-mono text-[#9ED1BE]">
-                                            Location: -7.030114281042527, 107.5393714306826
-                                        </p>
+
+                                    {/* Bottom Location & Date Overlay */}
+                                    <div className="rounded-xl border border-white/15 bg-[#0C291F]/88 px-3 py-2 backdrop-blur-xs flex items-center gap-2.5 text-white">
+                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#16533D] text-white">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.1" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                            </svg>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-[11px] font-bold text-white">
+                                                {formattedFullDate}
+                                            </p>
+                                            <p className="truncate text-[9.5px] font-mono text-[#B7E4D3]">
+                                                Location: -7.030114281042527,107.5393714306826
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+
+                            {cameraNote && (
+                                <p className="mt-2 rounded-lg bg-[#EDF6F1] px-2.5 py-1.5 text-[11px] font-medium text-[#0E7452]">
+                                    {cameraNote}
+                                </p>
+                            )}
 
                             {/* Deadline Row */}
                             <div className="mt-3.5 flex items-center justify-between text-[10.5px]">
-                                <span className="font-bold text-[#DC2626]">
+                                <span className="font-bold text-[#C81E1E]">
                                     ⏱ BATAS MASUK: 07:00 WIB
                                 </span>
-                                <span className="rounded-md bg-[#FEECEC] px-2 py-0.5 text-[10px] font-bold text-[#DC2626]">
-                                    Tersisa 11 Menit 45 Detik
+                                <span className="rounded bg-[#FDE8E8] px-2 py-0.5 text-[10px] font-bold text-[#C81E1E]">
+                                    Tersisa -11 Menit 45 Detik
                                 </span>
                             </div>
 
-                            {/* Exact 3 Buttons Stack (Figma Screenshot 3) */}
+                            {/* Exact 3 Action Buttons Stack */}
                             <div className="mt-2.5 space-y-2">
                                 <button
                                     type="button"
+                                    onClick={startLiveCamera}
                                     className="w-full rounded-xl bg-[#0D3124] py-3 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#154634] transition flex items-center justify-center gap-2"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -223,6 +306,7 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
 
                                 <button
                                     type="button"
+                                    onClick={handleSubmitCamera}
                                     className="w-full rounded-xl bg-[#0D3124] py-3 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#154634] transition flex items-center justify-center gap-2"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -244,10 +328,10 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                                 </button>
                             </div>
 
-                            {/* Log Kehadiran Pekan Ini (Exact 3 Mini Cards from Figma Screenshot 3) */}
+                            {/* Log Kehadiran Pekan Ini */}
                             <div className="mt-5 pt-4 border-t border-[#EDF2F0]">
                                 <div className="flex items-center justify-between text-[10.5px] font-bold">
-                                    <span className="uppercase tracking-wider text-slate-500">
+                                    <span className="uppercase tracking-wider text-slate-600">
                                         LOG KEHADIRAN PEKAN INI
                                     </span>
                                     <span className="text-[#0E7452] cursor-pointer hover:underline">
@@ -295,7 +379,7 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
 
                     {/* Right Column (7 cols): Active KBM Card + Jadwal Mengajar Hari Ini */}
                     <div className="lg:col-span-7 space-y-6">
-                        {/* Active KBM Session Card (Exact Figma Screenshot 3 Top-Right) */}
+                        {/* Active KBM Session Card */}
                         <div className="rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <span className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-[#0E7452]">
@@ -348,7 +432,7 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                             </button>
                         </div>
 
-                        {/* Jadwal Mengajar Hari Ini Card (Exact Figma Screenshot 3 Bottom-Right) */}
+                        {/* Jadwal Mengajar Hari Ini Card + Dapodik Footer */}
                         <div className="rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs">
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                                 <div className="flex items-center gap-2">
@@ -473,12 +557,170 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Exact Dapodik Integration & Cetak Jadwal Footer */}
+                            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-2.5 text-[11px] text-slate-500 leading-snug">
+                                    <svg className="w-4 h-4 text-[#0E7452] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
+                                        <circle cx="12" cy="12" r="9" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.25v4.5m0-7.5h.008v.008H12V8.25z" />
+                                    </svg>
+                                    <span>
+                                        Data presensi otomatis terintegrasi
+                                        <br />
+                                        dengan Dapodik Kemendikbud.
+                                    </span>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => window.print()}
+                                    className="text-right text-[10.5px] font-extrabold uppercase tracking-wider text-[#0E7452] hover:text-[#0D3124] hover:underline leading-tight shrink-0"
+                                >
+                                    CETAK JADWAL
+                                    <br />
+                                    MINGGUAN
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Full-Width Bottom 3-Column KPI Summary Row (Exact Figma Bottom Section) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {/* Card 1: Tingkat Kehadiran Mandiri */}
+                    <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-600">
+                                    TINGKAT KEHADIRAN MANDIRI
+                                </span>
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F5EE] text-[#0E7452]">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </span>
+                            </div>
+
+                            <div className="mt-3 flex items-baseline gap-2">
+                                <span className="text-[34px] leading-none font-extrabold tracking-tight text-slate-900">
+                                    98.2%
+                                </span>
+                                <span className="text-xs font-bold text-[#0E7452]">
+                                    Bulan Oktober
+                                </span>
+                            </div>
+
+                            <div className="mt-4 h-1.5 w-full rounded-full bg-[#E5ECE9] overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-[#046C4E]"
+                                    style={{ width: '98.2%' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex items-start justify-between gap-2 text-[10.5px] leading-snug">
+                            <span className="font-medium text-slate-600">
+                                21 / 21 Hari Hadir Tepat
+                                <br />
+                                Waktu
+                            </span>
+                            <span className="font-bold text-[#0E7452] text-left">
+                                Nol
+                                <br />
+                                Keterlambatan
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Beban Mengajar Mingguan */}
+                    <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-600">
+                                    BEBAN MENGAJAR MINGGUAN
+                                </span>
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F5EE] text-[#0E7452]">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347M12 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
+                                    </svg>
+                                </span>
+                            </div>
+
+                            <div className="mt-3 flex items-baseline gap-1.5">
+                                <span className="text-[34px] leading-none font-extrabold tracking-tight text-slate-900">
+                                    24
+                                </span>
+                                <span className="text-xs font-semibold text-slate-500">
+                                    Jam / Minggu
+                                </span>
+                            </div>
+
+                            <div className="mt-4 h-1.5 w-full rounded-full bg-[#E5ECE9] overflow-hidden">
+                                <div className="h-full w-full rounded-full bg-[#046C4E]" />
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between gap-2 text-[10.5px] leading-snug">
+                            <span className="font-medium text-slate-600">
+                                Standar Linearitas
+                                <br />
+                                Sertifikasi (24 Jam)
+                            </span>
+                            <span className="rounded-lg bg-[#E6F5EE] px-2.5 py-1 text-[10px] font-bold text-[#0E7452] leading-tight">
+                                Terpenuhi
+                                <br />
+                                (100%)
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Progres Input Penilaian KBM */}
+                    <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-600">
+                                    PROGRES INPUT PENILAIAN KBM
+                                </span>
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F5EE] text-[#0E7452]">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+                                    </svg>
+                                </span>
+                            </div>
+
+                            <div className="mt-3 flex items-baseline gap-2">
+                                <span className="text-[34px] leading-none font-extrabold tracking-tight text-[#046C4E]">
+                                    100%
+                                </span>
+                                <span className="text-xs font-bold text-[#0E7452]">
+                                    Sumatif & Formatif
+                                </span>
+                            </div>
+
+                            <div className="mt-4 h-1.5 w-full rounded-full bg-[#E5ECE9] overflow-hidden">
+                                <div className="h-full w-full rounded-full bg-[#046C4E]" />
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex items-start justify-between gap-2 text-[10.5px] leading-snug">
+                            <span className="font-medium text-slate-600">
+                                Tuntas PTS 1 • 6 Rombel
+                                <br />
+                                Sinkron
+                            </span>
+                            <span className="font-bold text-[#0E7452] text-left">
+                                E-Rapor Siap
+                                <br />
+                                Cetak
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Koordinasi Guru Piket Hari Ini Modal (Opened via 'Koordinasi Admin' / 'Ajukan Izin') */}
+            {/* Koordinasi Guru Piket Hari Ini Modal */}
             <Modal show={showPiketModal} onClose={() => setShowPiketModal(false)} maxWidth="md">
                 <div className="p-6">
                     <div className="flex items-center justify-between pb-3 border-b border-[#EDF2F0]">
