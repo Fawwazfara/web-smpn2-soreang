@@ -1,7 +1,6 @@
 import InputError from '@/Components/InputError';
-import Modal from '@/Components/Modal';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const KELOMPOK_OPTIONS = [
     'Kelompok A (Wajib)',
@@ -26,7 +25,6 @@ const emptyJam = {
 
 function formatTime(timeStr) {
     if (!timeStr) return '';
-    // Format "07:00:00" to "07.00"
     const parts = timeStr.split(':');
     return `${parts[0]}.${parts[1]}`;
 }
@@ -61,6 +59,9 @@ export default function Index({
         role: 'admin',
     };
 
+    // Mobile sidebar state
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
     // Parse initial tab from URL if present
     const urlParams = new URLSearchParams(
         typeof window !== 'undefined' ? window.location.search : '',
@@ -84,6 +85,19 @@ export default function Index({
         type: null,
         item: null,
     });
+
+    // Close modals on Escape key
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                if (mapelModalOpen) closeMapelModal();
+                if (jamModalOpen) closeJamModal();
+                if (deleteModal.open) closeDeleteModal();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [mapelModalOpen, jamModalOpen, deleteModal.open]);
 
     // Forms
     const mapelForm = useForm(emptyMapel);
@@ -139,7 +153,6 @@ export default function Index({
         setEditingJam(null);
         jamForm.clearErrors();
         jamForm.reset();
-        // Automatically suggest next jam_ke for selected day group
         const existingInGroup = jamPelajaran.filter(
             (slot) => slot.kelompok_hari === dayFilter,
         );
@@ -158,7 +171,6 @@ export default function Index({
     const openEditJam = (item) => {
         setEditingJam(item);
         jamForm.clearErrors();
-        // Convert "07:00:00" to "07:00" for time input
         const formatForInput = (val) => (val ? val.slice(0, 5) : '07:00');
         jamForm.setData({
             jam_ke: item.jam_ke,
@@ -260,7 +272,6 @@ export default function Index({
             const currentSlot = filteredJam[i];
             rows.push({ type: 'slot', data: currentSlot });
 
-            // Check if there is a break gap before next slot
             if (i < filteredJam.length - 1) {
                 const nextSlot = filteredJam[i + 1];
                 const currentEndMin = timeToMinutes(
@@ -288,7 +299,6 @@ export default function Index({
         return rows;
     }, [filteredJam, dayFilter]);
 
-    // Helper for badge styling
     const getKelompokBadgeClass = (kelompok) => {
         if (!kelompok)
             return 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
@@ -305,9 +315,19 @@ export default function Index({
         <div className="bg-surface font-sans text-body-md text-on-surface antialiased min-h-screen">
             <Head title="Master Mapel & Jam Pelajaran - Admin" />
 
+            {/* Mobile Backdrop Overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* Left Sidebar */}
             <aside
-                className="fixed left-0 top-0 h-screen w-64 border-r border-white/10 z-50 flex flex-col justify-between overflow-y-auto text-white"
+                className={`fixed left-0 top-0 h-screen w-64 border-r border-white/10 z-50 flex flex-col justify-between overflow-y-auto text-white transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+                    sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                }`}
                 style={{
                     backgroundColor: 'rgb(20, 53, 39)',
                     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -315,26 +335,40 @@ export default function Index({
             >
                 <div className="flex flex-col">
                     {/* Brand Header */}
-                    <div className="h-16 px-space-lg flex items-center gap-space-md border-b border-white/10">
-                        <div
-                            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                            style={{
-                                backgroundColor: 'rgb(234, 243, 238)',
-                                color: 'rgb(20, 53, 39)',
-                            }}
+                    <div className="h-16 px-4 sm:px-space-lg flex items-center justify-between border-b border-white/10">
+                        <div className="flex items-center gap-space-md min-w-0">
+                            <div
+                                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                                style={{
+                                    backgroundColor: 'rgb(234, 243, 238)',
+                                    color: 'rgb(20, 53, 39)',
+                                }}
+                            >
+                                <span className="material-symbols-outlined text-[20px]">
+                                    school
+                                </span>
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-white tracking-tight truncate font-bold text-sm">
+                                    SMPN 2 SOREANG
+                                </span>
+                                <span className="text-xs text-primary-fixed-dim truncate">
+                                    Sistem Informasi Akademik
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Mobile Close Sidebar Button */}
+                        <button
+                            type="button"
+                            className="lg:hidden p-1.5 text-primary-fixed-dim hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                            onClick={() => setSidebarOpen(false)}
+                            aria-label="Tutup Menu"
                         >
                             <span className="material-symbols-outlined text-[20px]">
-                                school
+                                close
                             </span>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-white tracking-tight truncate font-bold text-sm">
-                                SMPN 2 SOREANG
-                            </span>
-                            <span className="text-xs text-primary-fixed-dim truncate">
-                                Sistem Informasi Akademik
-                            </span>
-                        </div>
+                        </button>
                     </div>
 
                     {/* Navigation Menu */}
@@ -458,25 +492,39 @@ export default function Index({
             </aside>
 
             {/* Main Area */}
-            <div className="pl-64">
+            <div className="pl-0 lg:pl-64 transition-all duration-300">
                 {/* Header Bar */}
-                <header className="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md border-b border-outline-variant/40 z-40 px-gutter flex items-center justify-between">
-                    <div className="flex items-center gap-space-md w-96">
+                <header className="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md border-b border-outline-variant/40 z-30 px-4 sm:px-6 flex items-center justify-between gap-2 sm:gap-4">
+                    {/* Left side: Hamburger + Search */}
+                    <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-md">
+                        <button
+                            type="button"
+                            className="lg:hidden p-2 rounded-xl text-secondary hover:text-on-surface hover:bg-surface-container transition-colors shrink-0"
+                            onClick={() => setSidebarOpen(true)}
+                            aria-label="Buka Menu"
+                        >
+                            <span className="material-symbols-outlined text-[22px]">
+                                menu
+                            </span>
+                        </button>
+
                         <div className="relative w-full">
-                            <span className="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[18px]">
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">
                                 search
                             </span>
                             <input
-                                className="w-full h-10 pl-10 pr-space-md bg-surface-container-low border border-outline-variant rounded-xl text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
-                                placeholder="Cari NISN, NIP guru, kelas, atau mapel..."
+                                className="w-full h-9 sm:h-10 pl-9 pr-3 bg-surface-container-low border border-outline-variant rounded-xl text-xs sm:text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
+                                placeholder="Cari kode/mapel..."
                                 type="text"
                                 value={searchMapel}
                                 onChange={(e) => setSearchMapel(e.target.value)}
                             />
                         </div>
                     </div>
-                    <div className="flex items-center gap-space-lg">
-                        <div className="flex items-center gap-space-xs text-on-surface-variant">
+
+                    {/* Right side: User Profile & Actions */}
+                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                        <div className="hidden sm:flex items-center gap-1 text-on-surface-variant">
                             <button
                                 aria-label="Pemberitahuan"
                                 className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-surface-container hover:text-on-surface transition-colors"
@@ -486,17 +534,18 @@ export default function Index({
                                 </span>
                             </button>
                             <button
-                                aria-label="Bantuan Kalender"
+                                aria-label="Bantuan"
                                 className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-surface-container hover:text-on-surface transition-colors"
                             >
                                 <span className="material-symbols-outlined text-[20px]">
                                     help_outline
                                 </span>
                             </button>
+                            <div className="h-6 w-px bg-outline-variant/40 mx-1"></div>
                         </div>
-                        <div className="h-6 w-px bg-outline-variant/40"></div>
-                        <div className="flex items-center gap-space-md">
-                            <div className="flex flex-col text-right">
+
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="hidden md:flex flex-col text-right">
                                 <span className="text-xs text-on-surface font-semibold leading-tight">
                                     {user.nama}
                                 </span>
@@ -506,7 +555,7 @@ export default function Index({
                                         : user.role}
                                 </span>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary">
+                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary shrink-0">
                                 <span className="material-symbols-outlined text-[18px]">
                                     person
                                 </span>
@@ -516,7 +565,7 @@ export default function Index({
                                 method="post"
                                 as="button"
                                 title="Keluar Akun"
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary hover:text-error hover:bg-error-container/30 transition-colors"
+                                className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary hover:text-error hover:bg-error-container/30 transition-colors shrink-0"
                             >
                                 <span className="material-symbols-outlined text-[18px]">
                                     logout
@@ -526,14 +575,14 @@ export default function Index({
                     </div>
                 </header>
 
-                {/* Main Content */}
-                <main className="relative pt-16 w-full px-gutter min-h-screen bg-surface">
-                    <div className="flex flex-col w-full pb-16 pt-6">
+                {/* Main Content (Padded for Mobile & Desktop: p-4 sm:p-6 lg:p-8) */}
+                <main className="relative pt-16 w-full p-4 sm:p-6 lg:p-8 min-h-screen bg-surface">
+                    <div className="flex flex-col w-full pb-16 pt-2 sm:pt-4">
                         {/* Flash message */}
                         {flash?.message && (
-                            <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800 flex items-center justify-between">
+                            <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3 sm:p-4 text-xs sm:text-sm text-emerald-800 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-emerald-600">
+                                    <span className="material-symbols-outlined text-emerald-600 text-[18px] sm:text-[20px]">
                                         check_circle
                                     </span>
                                     <span>{flash.message}</span>
@@ -542,63 +591,61 @@ export default function Index({
                         )}
 
                         {/* Top Navigation & Breadcrumbs */}
-                        <div className="flex flex-col gap-space-xs mb-space-lg">
-                            <div className="flex items-center gap-space-xs text-xs text-secondary">
+                        <div className="flex flex-col gap-1.5 sm:gap-space-xs mb-4 sm:mb-6">
+                            <div className="flex items-center gap-1 sm:gap-space-xs text-[11px] sm:text-xs text-secondary overflow-x-auto whitespace-nowrap">
                                 <span className="hover:text-primary transition-colors cursor-pointer">
                                     Admin
                                 </span>
-                                <span className="material-symbols-outlined text-[14px]">
+                                <span className="material-symbols-outlined text-[12px] sm:text-[14px]">
                                     chevron_right
                                 </span>
                                 <span className="hover:text-primary transition-colors cursor-pointer">
                                     Master Data
                                 </span>
-                                <span className="material-symbols-outlined text-[14px]">
+                                <span className="material-symbols-outlined text-[12px] sm:text-[14px]">
                                     chevron_right
                                 </span>
                                 <span className="text-on-surface font-semibold">
                                     Mapel & Jam Pelajaran
                                 </span>
                             </div>
-                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md mt-space-xs">
+
+                            {/* 1. Header Halaman: Hanya Judul Utama (Tanpa Sub-title) & Metrik Ringkas */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mt-1">
                                 <div>
-                                    <h1 className="text-2xl font-bold text-on-surface tracking-tight">
+                                    <h1 className="text-xl sm:text-2xl font-bold text-on-surface tracking-tight">
                                         Master Mapel & Jam Pelajaran
                                     </h1>
-                                    <p className="text-sm text-secondary mt-1">
-                                        Pengaturan kurikulum mata pelajaran dan
-                                        alokasi slot jam KBM SMPN 2 Soreang.
-                                    </p>
                                 </div>
 
                                 {/* Quick Metrics Summary Badge Group */}
-                                <div className="flex items-center gap-space-sm">
-                                    <div className="bg-surface-container-lowest px-space-md py-space-sm rounded-xl border border-outline-variant/40 flex items-center gap-space-md shadow-sm">
-                                        <div className="w-8 h-8 rounded-lg bg-primary-fixed/40 text-primary flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-[18px]">
+                                <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3">
+                                    <div className="bg-surface-container-lowest p-2.5 sm:px-space-md sm:py-space-sm rounded-xl border border-outline-variant/40 flex items-center gap-2 sm:gap-space-md shadow-sm">
+                                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary-fixed/40 text-primary flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                                 menu_book
                                             </span>
                                         </div>
                                         <div>
-                                            <div className="text-[11px] text-secondary uppercase font-semibold">
+                                            <div className="text-[10px] sm:text-[11px] text-secondary uppercase font-semibold">
                                                 Total Mapel
                                             </div>
-                                            <div className="text-base font-bold text-on-surface leading-none">
+                                            <div className="text-sm sm:text-base font-bold text-on-surface leading-none">
                                                 {mapel.length} Matpel
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="bg-surface-container-lowest px-space-md py-space-sm rounded-xl border border-outline-variant/40 flex items-center gap-space-md shadow-sm">
-                                        <div className="w-8 h-8 rounded-lg bg-secondary-fixed/50 text-secondary flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-[18px]">
+                                    <div className="bg-surface-container-lowest p-2.5 sm:px-space-md sm:py-space-sm rounded-xl border border-outline-variant/40 flex items-center gap-2 sm:gap-space-md shadow-sm">
+                                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary-fixed/50 text-secondary flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                                 schedule
                                             </span>
                                         </div>
                                         <div>
-                                            <div className="text-[11px] text-secondary uppercase font-semibold">
+                                            <div className="text-[10px] sm:text-[11px] text-secondary uppercase font-semibold">
                                                 Slot Aktif
                                             </div>
-                                            <div className="text-base font-bold text-on-surface leading-none">
+                                            <div className="text-sm sm:text-base font-bold text-on-surface leading-none">
                                                 {filteredJam.length} Slot/Hari
                                             </div>
                                         </div>
@@ -607,15 +654,19 @@ export default function Index({
                             </div>
                         </div>
 
-                        {/* Segmented Navigation Tab Switcher */}
-                        <div className="flex border-b border-outline-variant/40 mb-space-lg">
-                            <div className="flex gap-space-sm" role="tablist">
+                        {/* 2. Tab Switcher: Segmented Pill Control */}
+                        <div className="mb-4 sm:mb-6">
+                            <div
+                                className="w-full sm:w-auto inline-flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 gap-1"
+                                role="tablist"
+                            >
                                 <button
-                                    className={`flex items-center gap-space-sm px-space-lg py-space-md text-sm transition-all border-b-2 font-semibold ${
+                                    type="button"
+                                    className={
                                         activeTab === 'mapel'
-                                            ? 'border-primary text-primary'
-                                            : 'border-transparent text-secondary hover:text-on-surface'
-                                    }`}
+                                            ? 'bg-white text-emerald-700 font-semibold shadow-sm rounded-lg px-4 py-2.5 transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium rounded-lg px-4 py-2.5 transition-all flex items-center justify-center gap-2 cursor-pointer flex-1 sm:flex-none'
+                                    }
                                     onClick={() => setActiveTab('mapel')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">
@@ -624,18 +675,19 @@ export default function Index({
                                     <span>Mata Pelajaran</span>
                                 </button>
                                 <button
-                                    className={`flex items-center gap-space-sm px-space-lg py-space-md text-sm transition-all border-b-2 ${
+                                    type="button"
+                                    className={
                                         activeTab === 'jam'
-                                            ? 'border-primary text-primary font-semibold'
-                                            : 'border-transparent text-secondary hover:text-on-surface'
-                                    }`}
+                                            ? 'bg-white text-emerald-700 font-semibold shadow-sm rounded-lg px-4 py-2.5 transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium rounded-lg px-4 py-2.5 transition-all flex items-center justify-center gap-2 cursor-pointer flex-1 sm:flex-none'
+                                    }
                                     onClick={() => setActiveTab('jam')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">
                                         timelapse
                                     </span>
                                     <span>Jam Pelajaran (Slot KBM)</span>
-                                    <span className="px-2 py-0.5 text-[11px] font-semibold bg-surface-container-high text-secondary rounded-full">
+                                    <span className="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold bg-slate-200/80 text-slate-700 rounded-full">
                                         {filteredJam.length} Slot
                                     </span>
                                 </button>
@@ -644,16 +696,16 @@ export default function Index({
 
                         {/* TAB 1: MATA PELAJARAN */}
                         {activeTab === 'mapel' && (
-                            <section className="flex flex-col gap-space-lg">
+                            <section className="flex flex-col gap-4 sm:gap-6">
                                 {/* Top Action Bar */}
-                                <div className="bg-surface-container-lowest p-space-md rounded-xl border border-outline-variant/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-md shadow-sm">
-                                    <div className="flex flex-1 items-center gap-space-md max-w-xl">
+                                <div className="bg-surface-container-lowest p-3 sm:p-4 rounded-xl border border-outline-variant/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
+                                    <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3 w-full sm:max-w-xl">
                                         <div className="relative flex-1">
                                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">
                                                 search
                                             </span>
                                             <input
-                                                className="w-full h-10 pl-9 pr-space-md bg-surface-container-low border border-outline-variant/60 rounded-lg text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
+                                                className="w-full h-10 pl-9 pr-3 bg-surface-container-low border border-outline-variant/60 rounded-lg text-xs sm:text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
                                                 placeholder="Cari kode atau nama mata pelajaran..."
                                                 type="text"
                                                 value={searchMapel}
@@ -664,9 +716,9 @@ export default function Index({
                                                 }
                                             />
                                         </div>
-                                        <div className="relative min-w-[200px]">
+                                        <div className="relative w-full sm:w-56">
                                             <select
-                                                className="w-full h-10 px-3 pr-8 bg-surface-container-low border border-outline-variant/60 rounded-lg text-sm text-on-surface appearance-none focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all cursor-pointer"
+                                                className="w-full h-10 px-3 pr-8 bg-surface-container-low border border-outline-variant/60 rounded-lg text-xs sm:text-sm text-on-surface appearance-none focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all cursor-pointer"
                                                 value={kelompokFilter}
                                                 onChange={(e) =>
                                                     setKelompokFilter(
@@ -692,9 +744,9 @@ export default function Index({
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-space-sm shrink-0">
+                                    <div className="flex items-center shrink-0">
                                         <button
-                                            className="h-10 px-space-lg bg-primary-container hover:bg-primary text-on-primary text-sm font-semibold rounded-lg flex items-center gap-space-xs transition-colors shadow-sm"
+                                            className="w-full sm:w-auto h-10 px-4 bg-primary-container hover:bg-primary text-on-primary text-xs sm:text-sm font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                                             onClick={openCreateMapel}
                                         >
                                             <span className="material-symbols-outlined text-[18px]">
@@ -705,50 +757,50 @@ export default function Index({
                                     </div>
                                 </div>
 
-                                {/* Mapel Table */}
+                                {/* Mapel Table Wrapped in overflow-x-auto */}
                                 <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/40 overflow-hidden shadow-sm">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
+                                    <div className="overflow-x-auto w-full">
+                                        <table className="w-full text-left border-collapse min-w-[640px]">
                                             <thead>
                                                 <tr className="bg-surface-container-low border-b border-outline-variant/40">
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-36"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-32 sm:w-36"
                                                         scope="col"
                                                     >
                                                         Kode Mapel
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold"
                                                         scope="col"
                                                     >
                                                         Nama Mata Pelajaran
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold"
                                                         scope="col"
                                                     >
                                                         Guru Pengampu
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-72"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-56 sm:w-72"
                                                         scope="col"
                                                     >
                                                         Kelompok Kurikulum
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-28 text-center"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-24 sm:w-28 text-center"
                                                         scope="col"
                                                     >
                                                         Aksi
                                                     </th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-outline-variant/20 text-sm text-on-surface">
+                                            <tbody className="divide-y divide-outline-variant/20 text-xs sm:text-sm text-on-surface">
                                                 {filteredMapel.length === 0 ? (
                                                     <tr>
                                                         <td
                                                             colSpan="5"
-                                                            className="py-12 text-center text-secondary text-sm"
+                                                            className="py-10 text-center text-secondary text-xs sm:text-sm"
                                                         >
                                                             Tidak ada mata
                                                             pelajaran yang cocok
@@ -789,17 +841,17 @@ export default function Index({
                                                                     }
                                                                     className="hover:bg-surface-container-low/50 transition-colors"
                                                                 >
-                                                                    <td className="py-space-md px-space-lg whitespace-nowrap">
-                                                                        <span className="px-2.5 py-1 rounded bg-surface-container font-mono text-[12px] font-semibold text-primary border border-outline-variant/30">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg whitespace-nowrap">
+                                                                        <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded bg-surface-container font-mono text-[11px] sm:text-[12px] font-semibold text-primary border border-outline-variant/30">
                                                                             {item.kode ||
                                                                                 item.kode_mapel}
                                                                         </span>
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg font-semibold text-on-surface">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg font-semibold text-on-surface">
                                                                         {item.nama ||
                                                                             item.nama_mapel}
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg">
                                                                         {uniqueTeachers.length >
                                                                         0 ? (
                                                                             <div className="flex flex-wrap items-center gap-1.5">
@@ -811,14 +863,14 @@ export default function Index({
                                                                                             key={
                                                                                                 g.id
                                                                                             }
-                                                                                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low border border-outline-variant/40"
+                                                                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-surface-container-low border border-outline-variant/40"
                                                                                         >
-                                                                                            <div className="w-5 h-5 rounded-full bg-primary-fixed/60 text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
+                                                                                            <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-primary-fixed/60 text-primary flex items-center justify-center font-bold text-[9px] sm:text-[10px] shrink-0">
                                                                                                 {getInitials(
                                                                                                     g.nama,
                                                                                                 )}
                                                                                             </div>
-                                                                                            <span className="text-xs font-medium text-on-surface">
+                                                                                            <span className="text-[11px] sm:text-xs font-medium text-on-surface truncate max-w-[120px] sm:max-w-none">
                                                                                                 {
                                                                                                     g.nama
                                                                                                 }
@@ -828,24 +880,24 @@ export default function Index({
                                                                                 )}
                                                                             </div>
                                                                         ) : (
-                                                                            <span className="text-xs text-secondary italic">
+                                                                            <span className="text-[11px] sm:text-xs text-secondary italic">
                                                                                 Belum
                                                                                 ditugaskan
                                                                             </span>
                                                                         )}
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg text-secondary">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg text-secondary">
                                                                         <span
-                                                                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getKelompokBadgeClass(item.kelompok_kurikulum)}`}
+                                                                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border ${getKelompokBadgeClass(item.kelompok_kurikulum)}`}
                                                                         >
                                                                             {item.kelompok_kurikulum ||
                                                                                 'Kelompok A (Wajib)'}
                                                                         </span>
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg text-center whitespace-nowrap">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg text-center whitespace-nowrap">
                                                                         <div className="inline-flex items-center gap-1 justify-center">
                                                                             <button
-                                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-emerald-50 transition-colors"
+                                                                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-emerald-50 transition-colors"
                                                                                 onClick={() =>
                                                                                     openEditMapel(
                                                                                         item,
@@ -853,12 +905,12 @@ export default function Index({
                                                                                 }
                                                                                 title="Ubah Data"
                                                                             >
-                                                                                <span className="material-symbols-outlined text-[18px]">
+                                                                                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                                                                     edit
                                                                                 </span>
                                                                             </button>
                                                                             <button
-                                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-error hover:bg-error-container/40 transition-colors"
+                                                                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-secondary hover:text-error hover:bg-error-container/40 transition-colors"
                                                                                 onClick={() =>
                                                                                     confirmDelete(
                                                                                         'mapel',
@@ -867,7 +919,7 @@ export default function Index({
                                                                                 }
                                                                                 title="Hapus Mapel"
                                                                             >
-                                                                                <span className="material-symbols-outlined text-[18px]">
+                                                                                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                                                                     delete
                                                                                 </span>
                                                                             </button>
@@ -883,8 +935,8 @@ export default function Index({
                                     </div>
 
                                     {/* Pagination Footer */}
-                                    <div className="py-space-sm px-space-lg bg-surface-container-low border-t border-outline-variant/40 flex flex-col sm:flex-row items-center justify-between gap-space-sm">
-                                        <span className="text-xs text-secondary">
+                                    <div className="py-2.5 px-4 sm:py-space-sm sm:px-space-lg bg-surface-container-low border-t border-outline-variant/40 flex flex-col sm:flex-row items-center justify-between gap-2">
+                                        <span className="text-[11px] sm:text-xs text-secondary text-center sm:text-left">
                                             Menampilkan{' '}
                                             <strong className="text-on-surface font-semibold">
                                                 {filteredMapel.length}
@@ -902,12 +954,12 @@ export default function Index({
 
                         {/* TAB 2: JAM PELAJARAN (SLOT KBM) */}
                         {activeTab === 'jam' && (
-                            <section className="flex flex-col gap-space-lg">
-                                {/* Top Action Bar for Slot */}
-                                <div className="bg-surface-container-lowest p-space-md rounded-xl border border-outline-variant/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-space-md shadow-sm">
-                                    <div className="flex items-center gap-space-xs p-1 bg-surface-container-low rounded-lg border border-outline-variant/40">
+                            <section className="flex flex-col gap-4 sm:gap-6">
+                                {/* Top Action Bar */}
+                                <div className="bg-surface-container-lowest p-3 sm:p-4 rounded-xl border border-outline-variant/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 p-1 bg-surface-container-low rounded-lg border border-outline-variant/40 w-full sm:w-auto">
                                         <button
-                                            className={`px-space-md py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
                                                 dayFilter === 'senin-kamis'
                                                     ? 'bg-surface-container-lowest text-primary shadow-xs'
                                                     : 'text-secondary hover:text-on-surface'
@@ -926,7 +978,7 @@ export default function Index({
                                             <span>Senin - Kamis (Reguler)</span>
                                         </button>
                                         <button
-                                            className={`px-space-md py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
                                                 dayFilter === 'jumat'
                                                     ? 'bg-surface-container-lowest text-primary shadow-xs'
                                                     : 'text-secondary hover:text-on-surface'
@@ -947,9 +999,9 @@ export default function Index({
                                             </span>
                                         </button>
                                     </div>
-                                    <div className="flex items-center gap-space-sm">
+                                    <div className="flex items-center shrink-0">
                                         <button
-                                            className="h-10 px-space-lg bg-surface-container-lowest border border-outline-variant/60 hover:bg-surface-container hover:border-primary-container text-primary text-sm font-semibold rounded-lg flex items-center gap-space-xs transition-colors shadow-sm"
+                                            className="w-full sm:w-auto h-10 px-4 bg-surface-container-lowest border border-outline-variant/60 hover:bg-surface-container hover:border-primary-container text-primary text-xs sm:text-sm font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                                             onClick={openCreateJam}
                                         >
                                             <span className="material-symbols-outlined text-[18px]">
@@ -960,51 +1012,51 @@ export default function Index({
                                     </div>
                                 </div>
 
-                                {/* Table of Slots */}
+                                {/* Table of Slots Wrapped in overflow-x-auto */}
                                 <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/40 overflow-hidden shadow-sm">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
+                                    <div className="overflow-x-auto w-full">
+                                        <table className="w-full text-left border-collapse min-w-[560px]">
                                             <thead>
                                                 <tr className="bg-surface-container-low border-b border-outline-variant/40">
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-36"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-28 sm:w-36"
                                                         scope="col"
                                                     >
                                                         Jam Ke-
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold"
                                                         scope="col"
                                                     >
                                                         Rentang Waktu
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-56"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-44 sm:w-56"
                                                         scope="col"
                                                     >
                                                         Kelompok Hari
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-40"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-32 sm:w-40"
                                                         scope="col"
                                                     >
                                                         Status Validasi
                                                     </th>
                                                     <th
-                                                        className="py-space-md px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-28 text-center"
+                                                        className="py-3 px-3 sm:py-space-md sm:px-space-lg text-xs text-secondary uppercase tracking-wider font-semibold w-24 sm:w-28 text-center"
                                                         scope="col"
                                                     >
                                                         Aksi
                                                     </th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-outline-variant/20 text-sm text-on-surface">
+                                            <tbody className="divide-y divide-outline-variant/20 text-xs sm:text-sm text-on-surface">
                                                 {slotRowsWithBreaks.length ===
                                                 0 ? (
                                                     <tr>
                                                         <td
                                                             colSpan="5"
-                                                            className="py-12 text-center text-secondary text-sm"
+                                                            className="py-10 text-center text-secondary text-xs sm:text-sm"
                                                         >
                                                             Belum ada slot jam
                                                             pelajaran untuk hari{' '}
@@ -1027,8 +1079,8 @@ export default function Index({
                                                                         key={`break-${idx}`}
                                                                         className="bg-surface-container-low/40"
                                                                     >
-                                                                        <td className="py-space-sm px-space-lg font-semibold text-secondary flex items-center gap-2">
-                                                                            <span className="material-symbols-outlined text-[16px] text-amber-600">
+                                                                        <td className="py-2.5 px-3 sm:py-space-sm sm:px-space-lg font-semibold text-secondary flex items-center gap-1.5 sm:gap-2">
+                                                                            <span className="material-symbols-outlined text-[15px] sm:text-[16px] text-amber-600">
                                                                                 coffee
                                                                             </span>
                                                                             <span>
@@ -1037,25 +1089,25 @@ export default function Index({
                                                                                 }
                                                                             </span>
                                                                         </td>
-                                                                        <td className="py-space-sm px-space-lg font-mono text-[13px] text-secondary font-medium">
+                                                                        <td className="py-2.5 px-3 sm:py-space-sm sm:px-space-lg font-mono text-[12px] sm:text-[13px] text-secondary font-medium">
                                                                             {
                                                                                 row.timeRange
                                                                             }
                                                                         </td>
-                                                                        <td className="py-space-sm px-space-lg text-secondary">
+                                                                        <td className="py-2.5 px-3 sm:py-space-sm sm:px-space-lg text-secondary">
                                                                             {
                                                                                 row.kelompokHari
                                                                             }
                                                                         </td>
-                                                                        <td className="py-space-sm px-space-lg">
-                                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                                                        <td className="py-2.5 px-3 sm:py-space-sm sm:px-space-lg">
+                                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                                                                 {
                                                                                     row.duration
                                                                                 }
                                                                             </span>
                                                                         </td>
-                                                                        <td className="py-space-sm px-space-lg text-center">
-                                                                            <span className="text-xs text-secondary">
+                                                                        <td className="py-2.5 px-3 sm:py-space-sm sm:px-space-lg text-center">
+                                                                            <span className="text-[11px] text-secondary">
                                                                                 Jeda
                                                                             </span>
                                                                         </td>
@@ -1070,13 +1122,13 @@ export default function Index({
                                                                     key={`slot-${slot.id}`}
                                                                     className="hover:bg-surface-container-low/50 transition-colors"
                                                                 >
-                                                                    <td className="py-space-md px-space-lg font-semibold text-on-surface">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg font-semibold text-on-surface">
                                                                         Jam Ke-
                                                                         {
                                                                             slot.jam_ke
                                                                         }
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg font-mono text-[13px] text-on-surface">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg font-mono text-[12px] sm:text-[13px] text-on-surface">
                                                                         {formatTime(
                                                                             slot.mulai ||
                                                                                 slot.waktu_mulai,
@@ -1087,22 +1139,22 @@ export default function Index({
                                                                                 slot.waktu_selesai,
                                                                         )}
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg text-secondary capitalize">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg text-secondary capitalize">
                                                                         {slot.kelompok_hari ===
                                                                         'senin-kamis'
                                                                             ? 'Senin - Kamis'
                                                                             : 'Jumat'}
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg">
-                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg">
+                                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                                                                             Aman
                                                                         </span>
                                                                     </td>
-                                                                    <td className="py-space-md px-space-lg text-center">
+                                                                    <td className="py-3 px-3 sm:py-space-md sm:px-space-lg text-center">
                                                                         <div className="inline-flex items-center gap-1 justify-center">
                                                                             <button
-                                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-emerald-50 transition-colors"
+                                                                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-emerald-50 transition-colors"
                                                                                 onClick={() =>
                                                                                     openEditJam(
                                                                                         slot,
@@ -1110,12 +1162,12 @@ export default function Index({
                                                                                 }
                                                                                 title="Ubah Slot"
                                                                             >
-                                                                                <span className="material-symbols-outlined text-[18px]">
+                                                                                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                                                                     edit
                                                                                 </span>
                                                                             </button>
                                                                             <button
-                                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-error hover:bg-error-container/40 transition-colors"
+                                                                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-secondary hover:text-error hover:bg-error-container/40 transition-colors"
                                                                                 onClick={() =>
                                                                                     confirmDelete(
                                                                                         'jam',
@@ -1124,7 +1176,7 @@ export default function Index({
                                                                                 }
                                                                                 title="Hapus Slot"
                                                                             >
-                                                                                <span className="material-symbols-outlined text-[18px]">
+                                                                                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                                                                     delete
                                                                                 </span>
                                                                             </button>
@@ -1140,15 +1192,15 @@ export default function Index({
                                     </div>
 
                                     {/* Footer Note for Slots */}
-                                    <div className="py-space-sm px-space-lg bg-surface-container-low border-t border-outline-variant/40 flex items-center justify-between text-secondary text-xs">
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="material-symbols-outlined text-[16px] text-primary">
+                                    <div className="py-2.5 px-3 sm:py-space-sm sm:px-space-lg bg-surface-container-low border-t border-outline-variant/40 flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-2 text-secondary text-[11px] sm:text-xs text-center sm:text-left">
+                                        <span className="flex items-center gap-1.5 justify-center sm:justify-start">
+                                            <span className="material-symbols-outlined text-[15px] sm:text-[16px] text-primary">
                                                 verified
                                             </span>
                                             Semua slot sinkron dengan Kalender
                                             Akademik SMPN 2 Soreang
                                         </span>
-                                        <span className="font-mono text-xs">
+                                        <span className="font-mono text-[10px] sm:text-xs">
                                             Durasi Jam: 40 Menit
                                         </span>
                                     </div>
@@ -1159,436 +1211,501 @@ export default function Index({
                 </main>
             </div>
 
-            {/* MODAL DIALOG: TAMBAH / UBAH MATA PELAJARAN */}
-            <Modal show={mapelModalOpen} onClose={closeMapelModal} maxWidth="lg">
-                <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/60 shadow-xl overflow-hidden">
-                    {/* Modal Header */}
-                    <div className="px-space-lg py-space-md border-b border-outline-variant/40 flex items-center justify-between bg-surface-container-lowest">
-                        <div className="flex items-center gap-space-sm">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[18px]">
-                                    post_add
-                                </span>
+            {/* 3. KOMPONEN MODAL: TAMBAH / UBAH MATA PELAJARAN */}
+            {mapelModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto transition-opacity"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) closeMapelModal();
+                    }}
+                >
+                    <div className="w-full max-w-lg bg-white rounded-2xl p-5 sm:p-6 shadow-xl max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 shrink-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-[20px]">
+                                        post_add
+                                    </span>
+                                </div>
+                                <h2 className="text-base sm:text-lg font-bold text-slate-800 truncate">
+                                    {editingMapel
+                                        ? `Ubah Mapel: ${editingMapel.kode || editingMapel.kode_mapel}`
+                                        : 'Tambah Mata Pelajaran'}
+                                </h2>
                             </div>
-                            <h2 className="text-base font-semibold text-on-surface">
-                                {editingMapel
-                                    ? `Ubah Mata Pelajaran: ${editingMapel.kode || editingMapel.kode_mapel}`
-                                    : 'Tambah Mata Pelajaran'}
-                            </h2>
-                        </div>
-                        <button
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-on-surface hover:bg-surface-container transition-colors"
-                            onClick={closeMapelModal}
-                            type="button"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">
-                                close
-                            </span>
-                        </button>
-                    </div>
-
-                    {/* Modal Form */}
-                    <form
-                        onSubmit={submitMapel}
-                        className="p-space-lg flex flex-col gap-space-md"
-                    >
-                        {/* Kode Mapel */}
-                        <div className="flex flex-col gap-1.5">
-                            <label
-                                className="text-xs text-on-surface font-semibold"
-                                htmlFor="input-kode"
-                            >
-                                Kode Mapel
-                            </label>
-                            <input
-                                id="input-kode"
-                                className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
-                                placeholder="contoh: MAT-01"
-                                required
-                                type="text"
-                                value={mapelForm.data.kode}
-                                onChange={(e) =>
-                                    mapelForm.setData('kode', e.target.value)
-                                }
-                            />
-                            <InputError
-                                message={
-                                    mapelForm.errors.kode ||
-                                    mapelForm.errors.kode_mapel
-                                }
-                            />
-                        </div>
-
-                        {/* Nama Mapel */}
-                        <div className="flex flex-col gap-1.5">
-                            <label
-                                className="text-xs text-on-surface font-semibold"
-                                htmlFor="input-nama"
-                            >
-                                Nama Mata Pelajaran
-                            </label>
-                            <input
-                                id="input-nama"
-                                className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
-                                placeholder="contoh: Pendidikan Pancasila"
-                                required
-                                type="text"
-                                value={mapelForm.data.nama}
-                                onChange={(e) =>
-                                    mapelForm.setData('nama', e.target.value)
-                                }
-                            />
-                            <InputError
-                                message={
-                                    mapelForm.errors.nama ||
-                                    mapelForm.errors.nama_mapel
-                                }
-                            />
-                        </div>
-
-                        {/* Guru Pengampu (Utama) */}
-                        <div className="flex flex-col gap-1.5">
-                            <label
-                                className="text-xs text-on-surface font-semibold"
-                                htmlFor="select-guru"
-                            >
-                                Guru Pengampu (Utama)
-                            </label>
-                            <div className="relative">
-                                <select
-                                    id="select-guru"
-                                    className="w-full h-10 px-3 pr-8 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface appearance-none focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all cursor-pointer"
-                                    value={mapelForm.data.guru_pengampu}
-                                    onChange={(e) =>
-                                        mapelForm.setData(
-                                            'guru_pengampu',
-                                            e.target.value,
-                                        )
-                                    }
-                                >
-                                    <option value="">
-                                        -- Pilih Guru Pengampu --
-                                    </option>
-                                    {gurus.map((g) => (
-                                        <option key={g.id} value={g.nama}>
-                                            {g.nama}
-                                        </option>
-                                    ))}
-                                </select>
-                                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
-                                    expand_more
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Kelompok Kurikulum */}
-                        <div className="flex flex-col gap-1.5">
-                            <label
-                                className="text-xs text-on-surface font-semibold"
-                                htmlFor="select-kelompok"
-                            >
-                                Kelompok Kurikulum
-                            </label>
-                            <div className="relative">
-                                <select
-                                    id="select-kelompok"
-                                    className="w-full h-10 px-3 pr-8 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface appearance-none focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all cursor-pointer"
-                                    required
-                                    value={mapelForm.data.kelompok_kurikulum}
-                                    onChange={(e) =>
-                                        mapelForm.setData(
-                                            'kelompok_kurikulum',
-                                            e.target.value,
-                                        )
-                                    }
-                                >
-                                    {KELOMPOK_OPTIONS.map((opt) => (
-                                        <option key={opt} value={opt}>
-                                            {opt}
-                                        </option>
-                                    ))}
-                                </select>
-                                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
-                                    expand_more
-                                </span>
-                            </div>
-                            <InputError
-                                message={mapelForm.errors.kelompok_kurikulum}
-                            />
-                        </div>
-
-                        {/* Alokasi Beban (JP/Minggu) */}
-                        <div className="flex flex-col gap-1.5">
-                            <label
-                                className="text-xs text-on-surface font-semibold"
-                                htmlFor="input-beban"
-                            >
-                                Alokasi Beban (JP/Minggu)
-                            </label>
-                            <input
-                                id="input-beban"
-                                className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
-                                max="10"
-                                min="1"
-                                type="number"
-                                value={mapelForm.data.beban_jam}
-                                onChange={(e) =>
-                                    mapelForm.setData(
-                                        'beban_jam',
-                                        Number(e.target.value),
-                                    )
-                                }
-                            />
-                        </div>
-
-                        {/* Modal Footer Actions */}
-                        <div className="mt-space-sm pt-space-md border-t border-outline-variant/30 flex items-center justify-end gap-space-sm">
                             <button
-                                className="h-10 px-space-md bg-surface-container-lowest border border-outline-variant/60 hover:bg-surface-container text-secondary hover:text-on-surface text-sm font-medium rounded-lg transition-colors"
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
                                 onClick={closeMapelModal}
                                 type="button"
+                                aria-label="Tutup"
                             >
-                                Batal
-                            </button>
-                            <button
-                                className="h-10 px-space-lg bg-primary-container hover:bg-primary text-on-primary text-sm font-semibold rounded-lg flex items-center gap-space-xs transition-colors shadow-sm disabled:opacity-50"
-                                disabled={mapelForm.processing}
-                                type="submit"
-                            >
-                                <span>+ Simpan</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            {/* MODAL DIALOG: TAMBAH / UBAH SLOT JAM PELAJARAN (REACT MODAL) */}
-            <Modal show={jamModalOpen} onClose={closeJamModal} maxWidth="lg">
-                <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/60 shadow-xl overflow-hidden">
-                    {/* Modal Header */}
-                    <div className="px-space-lg py-space-md border-b border-outline-variant/40 flex items-center justify-between bg-surface-container-lowest">
-                        <div className="flex items-center gap-space-sm">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[18px]">
-                                    alarm_add
+                                <span className="material-symbols-outlined text-[20px]">
+                                    close
                                 </span>
-                            </div>
-                            <h2 className="text-base font-semibold text-on-surface">
-                                {editingJam
-                                    ? `Ubah Slot: Jam Ke-${editingJam.jam_ke} (${editingJam.kelompok_hari})`
-                                    : 'Tambah Slot Jam Pelajaran'}
-                            </h2>
+                            </button>
                         </div>
-                        <button
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-on-surface hover:bg-surface-container transition-colors"
-                            onClick={closeJamModal}
-                            type="button"
+
+                        {/* Form Body (w-full space-y-4) */}
+                        <form
+                            onSubmit={submitMapel}
+                            className="flex flex-col flex-1 overflow-hidden"
                         >
-                            <span className="material-symbols-outlined text-[20px]">
-                                close
-                            </span>
-                        </button>
-                    </div>
+                            <div className="w-full space-y-4 overflow-y-auto py-4 pr-1 flex-1">
+                                {/* Kode Mapel */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label
+                                        className="text-xs font-semibold text-slate-700"
+                                        htmlFor="input-kode"
+                                    >
+                                        Kode Mapel
+                                    </label>
+                                    <input
+                                        id="input-kode"
+                                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
+                                        placeholder="contoh: MAT-01"
+                                        required
+                                        type="text"
+                                        value={mapelForm.data.kode}
+                                        onChange={(e) =>
+                                            mapelForm.setData(
+                                                'kode',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        message={
+                                            mapelForm.errors.kode ||
+                                            mapelForm.errors.kode_mapel
+                                        }
+                                    />
+                                </div>
 
-                    {/* Modal Form */}
-                    <form
-                        onSubmit={submitJam}
-                        className="p-space-lg flex flex-col gap-space-md"
-                    >
-                        {/* Overlap / General Error Alert */}
-                        {(jamForm.errors.mulai || jamForm.errors.selesai) && (
-                            <div className="p-3 rounded-lg bg-error-container/40 border border-error/20 text-xs text-error flex items-start gap-2">
-                                <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">
-                                    error
-                                </span>
-                                <div>
-                                    {jamForm.errors.mulai && (
-                                        <p>{jamForm.errors.mulai}</p>
-                                    )}
-                                    {jamForm.errors.selesai && (
-                                        <p>{jamForm.errors.selesai}</p>
-                                    )}
+                                {/* Nama Mapel */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label
+                                        className="text-xs font-semibold text-slate-700"
+                                        htmlFor="input-nama"
+                                    >
+                                        Nama Mata Pelajaran
+                                    </label>
+                                    <input
+                                        id="input-nama"
+                                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
+                                        placeholder="contoh: Pendidikan Pancasila"
+                                        required
+                                        type="text"
+                                        value={mapelForm.data.nama}
+                                        onChange={(e) =>
+                                            mapelForm.setData(
+                                                'nama',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        message={
+                                            mapelForm.errors.nama ||
+                                            mapelForm.errors.nama_mapel
+                                        }
+                                    />
+                                </div>
+
+                                {/* Kelompok Kurikulum: Opsi bertumpuk vertikal (flex flex-col gap-2) */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-semibold text-slate-700">
+                                        Kelompok Kurikulum
+                                    </label>
+                                    <div className="flex flex-col gap-2">
+                                        {KELOMPOK_OPTIONS.map((opt) => (
+                                            <label
+                                                key={opt}
+                                                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                                    mapelForm.data
+                                                        .kelompok_kurikulum ===
+                                                    opt
+                                                        ? 'border-emerald-600 bg-emerald-50/60 text-emerald-900 font-semibold'
+                                                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="kelompok_kurikulum"
+                                                    value={opt}
+                                                    checked={
+                                                        mapelForm.data
+                                                            .kelompok_kurikulum ===
+                                                        opt
+                                                    }
+                                                    onChange={(e) =>
+                                                        mapelForm.setData(
+                                                            'kelompok_kurikulum',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                                                />
+                                                <span className="text-xs sm:text-sm">
+                                                    {opt}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError
+                                        message={
+                                            mapelForm.errors.kelompok_kurikulum
+                                        }
+                                    />
+                                </div>
+
+                                {/* Guru Pengampu (Utama) */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label
+                                        className="text-xs font-semibold text-slate-700"
+                                        htmlFor="select-guru"
+                                    >
+                                        Guru Pengampu (Utama)
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            id="select-guru"
+                                            className="w-full h-10 px-3 pr-8 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 appearance-none focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all cursor-pointer"
+                                            value={mapelForm.data.guru_pengampu}
+                                            onChange={(e) =>
+                                                mapelForm.setData(
+                                                    'guru_pengampu',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                -- Pilih Guru Pengampu --
+                                            </option>
+                                            {gurus.map((g) => (
+                                                <option
+                                                    key={g.id}
+                                                    value={g.nama}
+                                                >
+                                                    {g.nama}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] pointer-events-none">
+                                            expand_more
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Alokasi Beban (JP/Minggu) */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label
+                                        className="text-xs font-semibold text-slate-700"
+                                        htmlFor="input-beban"
+                                    >
+                                        Alokasi Beban (JP/Minggu)
+                                    </label>
+                                    <input
+                                        id="input-beban"
+                                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
+                                        max="10"
+                                        min="1"
+                                        type="number"
+                                        value={mapelForm.data.beban_jam}
+                                        onChange={(e) =>
+                                            mapelForm.setData(
+                                                'beban_jam',
+                                                Number(e.target.value),
+                                            )
+                                        }
+                                    />
                                 </div>
                             </div>
-                        )}
 
-                        {/* Kelompok Hari */}
-                        <div className="flex flex-col gap-1.5">
-                            <label
-                                className="text-xs text-on-surface font-semibold"
-                                htmlFor="select-jam-hari"
-                            >
-                                Kelompok Hari
-                            </label>
-                            <div className="relative">
-                                <select
-                                    id="select-jam-hari"
-                                    className="w-full h-10 px-3 pr-8 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface appearance-none focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all cursor-pointer"
-                                    required
-                                    value={jamForm.data.kelompok_hari}
-                                    onChange={(e) =>
-                                        jamForm.setData(
-                                            'kelompok_hari',
-                                            e.target.value,
-                                        )
-                                    }
+                            {/* Footer Tombol Aksi: flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6 */}
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-3 sm:pt-4 border-t border-slate-100 shrink-0">
+                                <button
+                                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-colors justify-center flex items-center"
+                                    onClick={closeMapelModal}
+                                    type="button"
                                 >
-                                    <option value="senin-kamis">
-                                        Senin - Kamis (Reguler)
-                                    </option>
-                                    <option value="jumat">
-                                        Jumat (Khotbah & Literasi)
-                                    </option>
-                                </select>
-                                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
-                                    expand_more
-                                </span>
-                            </div>
-                            <InputError
-                                message={jamForm.errors.kelompok_hari}
-                            />
-                        </div>
-
-                        {/* Jam Ke- */}
-                        <div className="flex flex-col gap-1.5">
-                            <label
-                                className="text-xs text-on-surface font-semibold"
-                                htmlFor="input-jam-ke"
-                            >
-                                Jam Ke-
-                            </label>
-                            <input
-                                id="input-jam-ke"
-                                className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
-                                min="1"
-                                max="20"
-                                required
-                                type="number"
-                                value={jamForm.data.jam_ke}
-                                onChange={(e) =>
-                                    jamForm.setData(
-                                        'jam_ke',
-                                        Number(e.target.value),
-                                    )
-                                }
-                            />
-                            <InputError message={jamForm.errors.jam_ke} />
-                        </div>
-
-                        {/* Rentang Waktu: Mulai & Selesai */}
-                        <div className="grid grid-cols-2 gap-space-md">
-                            <div className="flex flex-col gap-1.5">
-                                <label
-                                    className="text-xs text-on-surface font-semibold"
-                                    htmlFor="input-mulai"
+                                    Batal
+                                </button>
+                                <button
+                                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm disabled:opacity-50 justify-center flex items-center"
+                                    disabled={mapelForm.processing}
+                                    type="submit"
                                 >
-                                    Waktu Mulai
-                                </label>
-                                <input
-                                    id="input-mulai"
-                                    className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
-                                    required
-                                    type="time"
-                                    value={jamForm.data.mulai}
-                                    onChange={(e) =>
-                                        jamForm.setData('mulai', e.target.value)
-                                    }
-                                />
+                                    <span>+ Simpan</span>
+                                </button>
                             </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
-                            <div className="flex flex-col gap-1.5">
-                                <label
-                                    className="text-xs text-on-surface font-semibold"
-                                    htmlFor="input-selesai"
-                                >
-                                    Waktu Selesai
-                                </label>
-                                <input
-                                    id="input-selesai"
-                                    className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all"
-                                    required
-                                    type="time"
-                                    value={jamForm.data.selesai}
-                                    onChange={(e) =>
-                                        jamForm.setData(
-                                            'selesai',
-                                            e.target.value,
-                                        )
-                                    }
-                                />
+            {/* 3. KOMPONEN MODAL: TAMBAH / UBAH SLOT JAM PELAJARAN */}
+            {jamModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto transition-opacity"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) closeJamModal();
+                    }}
+                >
+                    <div className="w-full max-w-lg bg-white rounded-2xl p-5 sm:p-6 shadow-xl max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 shrink-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-[20px]">
+                                        alarm_add
+                                    </span>
+                                </div>
+                                <h2 className="text-base sm:text-lg font-bold text-slate-800 truncate">
+                                    {editingJam
+                                        ? `Ubah Slot: Jam Ke-${editingJam.jam_ke} (${editingJam.kelompok_hari})`
+                                        : 'Tambah Slot Jam Pelajaran'}
+                                </h2>
                             </div>
-                        </div>
-
-                        {/* Modal Footer Actions */}
-                        <div className="mt-space-sm pt-space-md border-t border-outline-variant/30 flex items-center justify-end gap-space-sm">
                             <button
-                                className="h-10 px-space-md bg-surface-container-lowest border border-outline-variant/60 hover:bg-surface-container text-secondary hover:text-on-surface text-sm font-medium rounded-lg transition-colors"
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
                                 onClick={closeJamModal}
                                 type="button"
+                                aria-label="Tutup"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">
+                                    close
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* Form Body (w-full space-y-4) */}
+                        <form
+                            onSubmit={submitJam}
+                            className="flex flex-col flex-1 overflow-hidden"
+                        >
+                            <div className="w-full space-y-4 overflow-y-auto py-4 pr-1 flex-1">
+                                {/* Overlap / General Error Alert */}
+                                {(jamForm.errors.mulai ||
+                                    jamForm.errors.selesai) && (
+                                    <div className="p-3 rounded-xl bg-error-container/40 border border-error/20 text-xs text-error flex items-start gap-2">
+                                        <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">
+                                            error
+                                        </span>
+                                        <div>
+                                            {jamForm.errors.mulai && (
+                                                <p>{jamForm.errors.mulai}</p>
+                                            )}
+                                            {jamForm.errors.selesai && (
+                                                <p>{jamForm.errors.selesai}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Kelompok Hari: Opsi bertumpuk vertikal (flex flex-col gap-2) */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-semibold text-slate-700">
+                                        Kelompok Hari
+                                    </label>
+                                    <div className="flex flex-col gap-2">
+                                        {[
+                                            {
+                                                val: 'senin-kamis',
+                                                label: 'Senin - Kamis (Reguler)',
+                                            },
+                                            {
+                                                val: 'jumat',
+                                                label: 'Jumat (Khotbah & Literasi)',
+                                            },
+                                        ].map((item) => (
+                                            <label
+                                                key={item.val}
+                                                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                                    jamForm.data
+                                                        .kelompok_hari ===
+                                                    item.val
+                                                        ? 'border-emerald-600 bg-emerald-50/60 text-emerald-900 font-semibold'
+                                                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="kelompok_hari"
+                                                    value={item.val}
+                                                    checked={
+                                                        jamForm.data
+                                                            .kelompok_hari ===
+                                                        item.val
+                                                    }
+                                                    onChange={(e) =>
+                                                        jamForm.setData(
+                                                            'kelompok_hari',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                                                />
+                                                <span className="text-xs sm:text-sm">
+                                                    {item.label}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError
+                                        message={jamForm.errors.kelompok_hari}
+                                    />
+                                </div>
+
+                                {/* Jam Ke- */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label
+                                        className="text-xs font-semibold text-slate-700"
+                                        htmlFor="input-jam-ke"
+                                    >
+                                        Jam Ke-
+                                    </label>
+                                    <input
+                                        id="input-jam-ke"
+                                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
+                                        min="1"
+                                        max="20"
+                                        required
+                                        type="number"
+                                        value={jamForm.data.jam_ke}
+                                        onChange={(e) =>
+                                            jamForm.setData(
+                                                'jam_ke',
+                                                Number(e.target.value),
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        message={jamForm.errors.jam_ke}
+                                    />
+                                </div>
+
+                                {/* Rentang Waktu: Mulai & Selesai */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-space-md">
+                                    <div className="flex flex-col gap-1.5">
+                                        <label
+                                            className="text-xs font-semibold text-slate-700"
+                                            htmlFor="input-mulai"
+                                        >
+                                            Waktu Mulai
+                                        </label>
+                                        <input
+                                            id="input-mulai"
+                                            className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
+                                            required
+                                            type="time"
+                                            value={jamForm.data.mulai}
+                                            onChange={(e) =>
+                                                jamForm.setData(
+                                                    'mulai',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <label
+                                            className="text-xs font-semibold text-slate-700"
+                                            htmlFor="input-selesai"
+                                        >
+                                            Waktu Selesai
+                                        </label>
+                                        <input
+                                            id="input-selesai"
+                                            className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all"
+                                            required
+                                            type="time"
+                                            value={jamForm.data.selesai}
+                                            onChange={(e) =>
+                                                jamForm.setData(
+                                                    'selesai',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Tombol Aksi: flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6 */}
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-3 sm:pt-4 border-t border-slate-100 shrink-0">
+                                <button
+                                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-colors justify-center flex items-center"
+                                    onClick={closeJamModal}
+                                    type="button"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm disabled:opacity-50 justify-center flex items-center"
+                                    disabled={jamForm.processing}
+                                    type="submit"
+                                >
+                                    <span>+ Simpan Slot</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* 3. KOMPONEN MODAL: KONFIRMASI HAPUS */}
+            {deleteModal.open && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto transition-opacity"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) closeDeleteModal();
+                    }}
+                >
+                    <div className="w-full max-w-lg bg-white rounded-2xl p-5 sm:p-6 shadow-xl max-h-[90vh] flex flex-col">
+                        <div className="flex items-center gap-3 text-error mb-3 sm:mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                                <span className="material-symbols-outlined text-[24px]">
+                                    warning
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-base sm:text-lg text-slate-800">
+                                    Konfirmasi Hapus Data
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    Tindakan ini tidak dapat dibatalkan.
+                                </p>
+                            </div>
+                        </div>
+
+                        <p className="text-xs sm:text-sm text-slate-600 my-2">
+                            {deleteModal.type === 'mapel' &&
+                                `Apakah Anda yakin ingin menghapus mata pelajaran "${deleteModal.item?.nama || deleteModal.item?.nama_mapel}" (${deleteModal.item?.kode || deleteModal.item?.kode_mapel})?`}
+                            {deleteModal.type === 'jam' &&
+                                `Apakah Anda yakin ingin menghapus slot Jam Ke-${deleteModal.item?.jam_ke} (${deleteModal.item?.kelompok_hari})?`}
+                        </p>
+
+                        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-3 sm:pt-4 border-t border-slate-100 shrink-0">
+                            <button
+                                type="button"
+                                onClick={closeDeleteModal}
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-colors justify-center flex items-center"
                             >
                                 Batal
                             </button>
                             <button
-                                className="h-10 px-space-lg bg-primary-container hover:bg-primary text-on-primary text-sm font-semibold rounded-lg flex items-center gap-space-xs transition-colors shadow-sm disabled:opacity-50"
-                                disabled={jamForm.processing}
-                                type="submit"
+                                type="button"
+                                onClick={handleDelete}
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm justify-center flex items-center"
                             >
-                                <span>+ Simpan Slot</span>
+                                Hapus
                             </button>
                         </div>
-                    </form>
-                </div>
-            </Modal>
-
-            {/* MODAL CONFIRM DELETE */}
-            <Modal
-                show={deleteModal.open}
-                onClose={closeDeleteModal}
-                maxWidth="sm"
-            >
-                <div className="p-6 bg-surface-container-lowest rounded-xl">
-                    <div className="flex items-center gap-3 text-error mb-4">
-                        <div className="w-10 h-10 rounded-full bg-error-container/40 flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-[24px]">
-                                warning
-                            </span>
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-base text-on-surface">
-                                Konfirmasi Hapus Data
-                            </h3>
-                            <p className="text-xs text-secondary mt-0.5">
-                                Tindakan ini tidak dapat dibatalkan.
-                            </p>
-                        </div>
-                    </div>
-
-                    <p className="text-sm text-secondary mb-6">
-                        {deleteModal.type === 'mapel' &&
-                            `Apakah Anda yakin ingin menghapus mata pelajaran "${deleteModal.item?.nama || deleteModal.item?.nama_mapel}" (${deleteModal.item?.kode || deleteModal.item?.kode_mapel})?`}
-                        {deleteModal.type === 'jam' &&
-                            `Apakah Anda yakin ingin menghapus slot Jam Ke-${deleteModal.item?.jam_ke} (${deleteModal.item?.kelompok_hari})?`}
-                    </p>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={closeDeleteModal}
-                            className="px-4 py-2 border border-outline-variant/60 text-secondary hover:text-on-surface rounded-lg text-sm font-medium transition-colors"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleDelete}
-                            className="px-4 py-2 bg-error hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
-                        >
-                            Hapus
-                        </button>
                     </div>
                 </div>
-            </Modal>
+            )}
         </div>
     );
 }
-
