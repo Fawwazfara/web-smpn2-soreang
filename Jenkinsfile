@@ -20,7 +20,6 @@ appPipeline(
     agent: 'docker',
     laravel: [
         withNode: true,                 // build asset Vite supaya test Inertia lolos
-	nodeInstallCmd: 'npm install',
         lint    : [ enabled: false ]    // setelah kode dirapikan, pakai: [ enabled: true, args: '--test' ]
     ],
     skipDocker: true                    // CI saja: tidak build/push image Docker
