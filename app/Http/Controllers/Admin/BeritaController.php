@@ -156,5 +156,20 @@ class BeritaController extends Controller
         $berita->update(['is_pinned' => true, 'pinned_at' => now()]);
         return back()->with('success', 'Berita disematkan di slider beranda.');
     }
+
+    /**
+     * Remove the specified news article.
+     */
+    public function destroy(Pengumuman $berita): RedirectResponse
+    {
+        // Delete image file if exists
+        if ($berita->gambar_path && File::exists(public_path($berita->gambar_path))) {
+            File::delete(public_path($berita->gambar_path));
+        }
+
+        $berita->delete();
+
+        return redirect()->route('admin.berita.index')->with('success', 'Berita berhasil dihapus.');
+    }
 }
 
