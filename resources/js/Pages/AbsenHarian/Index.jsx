@@ -243,7 +243,7 @@ export default function Index({
             const started = await startCamera();
             if (!started) return;
             setCameraError(
-                'Kamera live telah aktif. Posisikan wajah di dalam lingkaran lalu klik tombol sekali lagi untuk mengambil foto.'
+                'Kamera live telah aktif. Posisikan wajah menghadap kamera lalu klik tombol sekali lagi untuk mengambil foto.'
             );
             return;
         }
@@ -593,45 +593,14 @@ export default function Index({
                                 </div>
                             )}
 
-                            {/* Top-Left Pill: Anti-Spoofing Valid */}
-                            <div className="absolute left-3.5 top-3.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-[10.5px] font-extrabold tracking-wide text-[#064E3B] shadow-sm">
-                                <svg className="w-3.5 h-3.5 text-[#10B981]" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            {/* Clean Location-Only Overlay */}
+                            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex items-center gap-2.5 rounded-xl border border-white/15 bg-[#0A241B]/80 px-3.5 py-2 text-white backdrop-blur-xs">
+                                <svg className="w-4 h-4 text-[#6EE7B7] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19.5s6-5.25 6-10.125a6 6 0 10-12 0C6 14.25 12 19.5 12 19.5z" />
                                 </svg>
-                                <span>
-                                    {cameraReady || absenHariIni
-                                        ? 'ANTI-SPOOFING VALID (99.8%)'
-                                        : 'SENSOR BIOMETRIK STANDBY'}
-                                </span>
-                            </div>
-
-                            {/* Top-Right Pill: REC • LIVE SENSOR */}
-                            <div className="absolute right-3.5 top-3.5 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#0D281E]/90 px-3 py-1.5 text-[10px] font-extrabold tracking-wider text-white">
-                                <span
-                                    className={`h-2 w-2 rounded-full ${
-                                        cameraReady ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'
-                                    }`}
-                                />
-                                <span>{cameraReady ? 'REC • LIVE SENSOR' : 'TERVERIFIKASI LIVE'}</span>
-                            </div>
-
-                            {/* Center Dashed Face Guide Circle */}
-                            {(cameraReady || capturedPreview) && (
-                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                    <div className="h-44 w-44 sm:h-52 sm:w-52 rounded-full border-2 border-dashed border-[#34D399]/80 shadow-[0_0_0_9999px_rgba(6,24,18,0.14)]" />
-                                </div>
-                            )}
-
-                            {/* Bottom Security Strip: Upload foto dari galeri tidak diizinkan */}
-                            <div className="absolute inset-x-3 bottom-3 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#082218]/85 px-3.5 py-2.5 backdrop-blur-xs">
-                                <div className="flex items-center gap-2 text-[11px] font-medium text-[#D1FAE5]">
-                                    <svg className="w-4 h-4 text-[#34D399] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                                    </svg>
-                                    <span>Upload foto dari galeri tidak diizinkan</span>
-                                </div>
-                                <span className="rounded-md border border-[#247A59] bg-[#114230] px-2.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-[#6EE7B7]">
-                                    KEAMANAN SIMPATIKA
+                                <span className="truncate font-mono text-[11px] font-semibold text-[#D1FAE5]">
+                                    Location: {geoState.lat}, {geoState.lng}
                                 </span>
                             </div>
                         </div>

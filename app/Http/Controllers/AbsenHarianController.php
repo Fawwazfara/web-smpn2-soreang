@@ -8,6 +8,7 @@ use App\Models\GuruPiket;
 use App\Models\HariLibur;
 use App\Models\JadwalSlot;
 use App\Models\TahunAjaran;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -216,8 +217,12 @@ class AbsenHarianController extends Controller
             ]);
         }
 
+        $targetRoute = $request->validated('redirect_to') === 'dashboard'
+            ? 'dashboard'
+            : 'absen-harian.index';
+
         return redirect()
-            ->route('absen-harian.index')
+            ->route($targetRoute)
             ->with('status', 'Presensi masuk berhasil dicatat pada pukul '.$now->format('H:i').' WIB ('.ucwords($status).').');
     }
 
@@ -269,9 +274,161 @@ class AbsenHarianController extends Controller
             'waktu_pulang' => $now,
         ]);
 
+        $targetRoute = $request->validated('redirect_to') === 'dashboard'
+            ? 'dashboard'
+            : 'absen-harian.index';
+
         return redirect()
-            ->route('absen-harian.index')
+            ->route($targetRoute)
             ->with('status', 'Presensi pulang berhasil dicatat pada pukul '.$now->format('H:i').' WIB.');
+    }
+
+    public function rekap(Request $request): Response
+    {
+        $tz = config('absensi.timezone', 'Asia/Jakarta');
+        $now = Carbon::now($tz);
+        $todayStr = $now->toDateString();
+
+        $tanggalInput = (string) $request->input('tanggal', $todayStr);
+        $tanggal = $todayStr;
+        if (preg_match('/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/', $tanggalInput)) {
+            try {
+                $parsed = Carbon::createFromFormat('Y-m-d', $tanggalInput, $tz);
+                if ($parsed && $parsed->format('Y-m-d') === $tanggalInput) {
+                    $tanggal = $tanggalInput;
+                }
+            } catch (\Throwable) {
+                $tanggal = $todayStr;
+            }
+        }
+
+        $tanggalCarbon = Carbon::createFromFormat('Y-m-d', $tanggal, $tz);
+        $kategori = (string) $request->input('kategori', 'all');
+        $statusFilter = (string) $request->input('status', 'all');
+        $search = trim((string) $request->input('search', ''));
+
+        $pegawaiWajib = User::query()
+            ->whereIn('role', ['guru', 'guru_piket'])
+            ->where('aktif', true)
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'username', 'role', 'jenis_pegawai', 'no_wa']);
+
+        $absenMap = AbsenHarian::query()
+            ->whereIn('user_id', $pegawaiWajib->pluck('id'))
+            ->whereDate('tanggal', $tanggal)
+            ->get()
+            ->keyBy('user_id');
+
+        $allRows = $pegawaiWajib->map(function (User $pegawai) use ($absenMap, $tz) {
+            /** @var AbsenHarian|null $absen */
+            $absen = $absenMap->get($pegawai->id);
+            $kategoriKey = $pegawai->role === 'guru_piket'
+                ? 'guru_piket'
+                : ($pegawai->jenis_pegawai === 'tenaga_kependidikan' ? 'tenaga_kependidikan' : 'guru');
+
+            $jabatanLabel = match ($kategoriKey) {
+                'guru_piket' => 'Guru Piket',
+                'tenaga_kependidikan' => 'Tenaga Kependidikan',
+                default => 'Guru Pengajar',
+            };
+
+            $formatted = $absen ? $this->formatAbsenRecord($absen, $tz) : null;
+
+            return [
+                'user_id' => $pegawai->id,
+                'nama' => $pegawai->nama,
+                'username' => $pegawai->username,
+                'role' => $pegawai->role,
+                'kategori' => $kategoriKey,
+                'jabatan_label' => $jabatanLabel,
+                'no_wa' => $pegawai->no_wa,
+                'sudah_absen' => $absen !== null,
+                'absen_id' => $absen?->id,
+                'jam_masuk' => $formatted['jam_masuk'] ?? '-',
+                'jam_masuk_full' => $formatted['jam_masuk_full'] ?? '-',
+                'jam_pulang' => $formatted['jam_pulang'] ?? null,
+                'waktu_ambil' => $formatted['waktu_ambil'] ?? null,
+                'status' => $absen ? $absen->status : 'belum_absen',
+                'sumber' => $absen?->sumber,
+                'ip_address' => $absen?->ip_address,
+                'keterangan' => $formatted['keterangan'] ?? 'Belum ada rekaman kamera live',
+                'foto_url' => $formatted['foto_url'] ?? null,
+            ];
+        });
+
+        $totalWajib = $allRows->count();
+        $totalHadir = $allRows->where('sudah_absen', true)->count();
+        $tepatWaktu = $allRows->where('status', 'tepat waktu')->count();
+        $terlambat = $allRows->where('status', 'terlambat')->count();
+        $belumAbsen = $allRows->where('status', 'belum_absen')->count();
+        $sudahPulang = $allRows->whereNotNull('jam_pulang')->count();
+        $persentaseHadir = $totalWajib > 0
+            ? round(($totalHadir / $totalWajib) * 100, 1)
+            : 0.0;
+
+        $filteredRows = $allRows
+            ->filter(function (array $row) use ($kategori, $statusFilter, $search) {
+                if ($kategori !== 'all' && $row['kategori'] !== $kategori) {
+                    return false;
+                }
+                if ($statusFilter !== 'all' && $row['status'] !== $statusFilter) {
+                    return false;
+                }
+                if ($search !== '') {
+                    $q = mb_strtolower($search);
+                    $matchNama = str_contains(mb_strtolower($row['nama']), $q);
+                    $matchNip = str_contains(mb_strtolower($row['username']), $q);
+                    if (! $matchNama && ! $matchNip) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            ->sortBy([
+                fn (array $a, array $b) => ($b['sudah_absen'] <=> $a['sudah_absen']),
+                fn (array $a, array $b) => strcmp($a['nama'], $b['nama']),
+            ])
+            ->values();
+
+        $jamMasuk = (string) config('absensi.jam_masuk', '07:00');
+        $toleransiMenit = (int) config('absensi.toleransi_menit', 15);
+        $batasTepatWaktu = Carbon::createFromFormat('Y-m-d H:i', $tanggal.' '.$jamMasuk, $tz)
+            ->addMinutes($toleransiMenit)
+            ->format('H:i');
+
+        $tahunAjaranAktif = TahunAjaran::query()
+            ->where('aktif', true)
+            ->first(['id', 'nama', 'semester']);
+
+        return Inertia::render('AbsenHarian/Rekap', [
+            'rows' => $filteredRows,
+            'ringkasan' => [
+                'tanggal' => $tanggal,
+                'tanggal_label' => $this->formatTanggalLengkapIndo($tanggalCarbon),
+                'is_hari_ini' => $tanggal === $todayStr,
+                'total_wajib_absen' => $totalWajib,
+                'total_hadir' => $totalHadir,
+                'tepat_waktu' => $tepatWaktu,
+                'terlambat' => $terlambat,
+                'belum_absen' => $belumAbsen,
+                'sudah_pulang' => $sudahPulang,
+                'persentase_hadir' => number_format($persentaseHadir, 1, '.', ''),
+            ],
+            'filters' => [
+                'tanggal' => $tanggal,
+                'kategori' => $kategori,
+                'status' => $statusFilter,
+                'search' => $search,
+            ],
+            'aturanJam' => [
+                'jam_masuk' => $jamMasuk,
+                'batas_tepat_waktu' => $batasTepatWaktu,
+                'jam_pulang' => (string) config('absensi.jam_pulang', '14:30'),
+                'sekolah' => config('absensi.sekolah'),
+            ],
+            'tahunAjaranAktif' => $tahunAjaranAktif,
+        ]);
     }
 
     public function foto(Request $request, AbsenHarian $absenHarian): StreamedResponse

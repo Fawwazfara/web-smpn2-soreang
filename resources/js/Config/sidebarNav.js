@@ -41,7 +41,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'ATTENDANCE',
             items: [
-                { label: 'Presensi Guru (Geofence)', route: null, icon: 'map-pin' },
+                { label: 'Presensi Guru (Geofence)', route: 'absen-harian.rekap', icon: 'map-pin' },
                 { label: 'Presensi Siswa', route: null, icon: 'checklist' },
                 { label: 'Rekap & Laporan', route: null, icon: 'doc-fold' },
             ],
@@ -97,7 +97,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'ATTENDANCE',
             items: [
-                { label: 'Presensi Guru (Geofence)', route: null, icon: 'map-pin' },
+                { label: 'Presensi Guru (Geofence)', route: 'absen-harian.rekap', icon: 'map-pin' },
                 { label: 'Presensi Siswa', route: null, icon: 'checklist' },
                 { label: 'Rekap & Laporan', route: null, icon: 'doc-fold' },
             ],

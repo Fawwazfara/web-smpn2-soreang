@@ -275,7 +275,11 @@ function MetodeBadgeIcon({ type }) {
     );
 }
 
-export default function Dashboard() {
+export default function Dashboard({
+    stats = {},
+    absenGuruTerbaru = [],
+    piketHariIni = [],
+}) {
     const user = usePage().props.auth.user;
     const [tingkatFilter, setTingkatFilter] = useState('all');
     const [logSearch, setLogSearch] = useState('');
@@ -362,15 +366,15 @@ export default function Dashboard() {
 
                         <div className="flex flex-col items-start gap-2.5">
                             <div className="flex flex-wrap items-center gap-2.5">
-                                <button
-                                    type="button"
+                                <Link
+                                    href={route('absen-harian.rekap')}
                                     className="inline-flex items-center gap-2 rounded-full border border-[#E6ECE9] bg-[#F6F9F8] px-4 py-2 text-xs font-bold text-slate-800 hover:bg-[#ECF2F0] transition"
                                 >
                                     <svg className="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                                     </svg>
-                                    Export Harian
-                                </button>
+                                    Rekap Presensi Guru
+                                </Link>
                                 <button
                                     type="button"
                                     className="inline-flex items-center gap-2 rounded-full border border-[#E6ECE9] bg-[#F6F9F8] px-4 py-2 text-xs font-bold text-slate-800 hover:bg-[#ECF2F0] transition"
@@ -396,7 +400,7 @@ export default function Dashboard() {
 
                 {/* 2. Four Exact KPI Summary Cards (Exact Figma Image 1 Row) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    {/* Card 1: Total Guru Hadir */}
+                    {/* Card 1: Total Guru Hadir (Real AbsenHarian Data) */}
                     <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-start justify-between gap-2">
@@ -408,16 +412,16 @@ export default function Dashboard() {
                                     </svg>
                                 </div>
                                 <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F5EE] px-2.5 py-0.5 text-[10.5px] font-bold text-[#0E7452]">
-                                    ↗ 93.1%
+                                    ↗ {stats.persentase_hadir_hari_ini ?? '0.0'}%
                                 </span>
                             </div>
-                            <p className="mt-4 text-xs font-medium text-slate-500">Total Guru Hadir</p>
+                            <p className="mt-4 text-xs font-medium text-slate-500">Total Pegawai Hadir</p>
                             <div className="mt-1 flex items-baseline gap-1.5">
                                 <span className="text-[32px] leading-none font-extrabold tracking-tight text-slate-900">
-                                    54
+                                    {stats.hadir_hari_ini ?? 0}
                                 </span>
                                 <span className="text-xs font-semibold text-slate-400">
-                                    / 58 Guru
+                                    / {stats.total_wajib_absen ?? 0} Pegawai
                                 </span>
                             </div>
                         </div>
@@ -426,19 +430,19 @@ export default function Dashboard() {
                             <span className="inline-flex items-center gap-1.5 font-bold text-[#0E7452] leading-tight">
                                 <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] shrink-0" />
                                 <span>
-                                    52 Valid
-                                    <br />
-                                    Geofence
+                                    {stats.tepat_waktu_hari_ini ?? 0} Tepat Waktu
                                 </span>
                             </span>
-                            <span className="font-semibold text-slate-500 text-right leading-tight">
-                                2<br />
-                                Dispen
-                            </span>
+                            <Link
+                                href={route('absen-harian.rekap')}
+                                className="font-bold text-[#0E7452] hover:underline shrink-0"
+                            >
+                                Rekap →
+                            </Link>
                         </div>
                     </div>
 
-                    {/* Card 2: Guru Belum Absen / Telat */}
+                    {/* Card 2: Guru Belum Absen / Telat (Real AbsenHarian Data) */}
                     <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-start justify-between gap-2">
@@ -448,25 +452,24 @@ export default function Dashboard() {
                                     </svg>
                                 </div>
                                 <span className="inline-flex items-center rounded-full bg-[#FEF3E2] px-2.5 py-0.5 text-[10.5px] font-bold text-[#B45309]">
-                                    Perlu Konfirmasi
+                                    Perlu Pantauan
                                 </span>
                             </div>
-                            <p className="mt-4 text-xs font-medium text-slate-500">Guru Belum Absen / Telat</p>
+                            <p className="mt-4 text-xs font-medium text-slate-500">Belum Absen / Terlambat</p>
                             <div className="mt-1 flex items-baseline gap-1.5">
                                 <span className="text-[32px] leading-none font-extrabold tracking-tight text-slate-900">
-                                    2
+                                    {(stats.belum_absen_hari_ini ?? 0) + (stats.terlambat_hari_ini ?? 0)}
                                 </span>
-                                <span className="text-xs font-semibold text-slate-400">Guru</span>
+                                <span className="text-xs font-semibold text-slate-400">Pegawai</span>
                             </div>
                         </div>
 
                         <div className="mt-4 rounded-xl bg-[#FFF9EE] px-3 py-2.5 flex items-center justify-between text-[11px] text-[#B45309]">
-                            <span className="truncate font-semibold flex items-center gap-1">
-                                <span>📞</span>
-                                <span className="truncate">Piket sedang konfi...</span>
+                            <span className="truncate font-semibold">
+                                {stats.belum_absen_hari_ini ?? 0} Belum • {stats.terlambat_hari_ini ?? 0} Telat
                             </span>
                             <Link
-                                href={route('users.index', { role: 'guru_piket' })}
+                                href={route('absen-harian.rekap')}
                                 className="font-bold underline ml-1 shrink-0"
                             >
                                 Cek
@@ -941,68 +944,122 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        {/* Card 3: Guru Piket Hari Ini (Exact Figma Bottom-Right Card) */}
+                        {/* Card 3: Guru Piket Hari Ini (Connected to Real DB) */}
                         <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs">
                             <div className="flex items-center justify-between mb-3.5">
                                 <h3 className="text-sm font-bold text-slate-900">
                                     Guru Piket Hari Ini
                                 </h3>
-                                <span className="rounded-full bg-[#E5F6ED] px-2.5 py-0.5 text-[10px] font-bold text-[#0E7452]">
-                                    Aktif
-                                </span>
+                                <Link
+                                    href={route('users.index', { role: 'guru_piket' })}
+                                    className="rounded-full bg-[#E5F6ED] px-2.5 py-0.5 text-[10px] font-bold text-[#0E7452] hover:bg-[#D5EFE2] transition"
+                                >
+                                    {piketHariIni.length} Aktif
+                                </Link>
                             </div>
 
-                            <div className="space-y-2.5">
-                                <div className="flex items-center justify-between gap-2.5 rounded-xl bg-[#F6F9F8] p-3">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0F382A] text-white text-xs font-bold">
-                                            JS
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="truncate text-xs font-bold text-slate-900">
-                                                Drs. Jajang Sukmana
-                                            </p>
-                                            <p className="truncate text-[10.5px] text-slate-400">
-                                                Koord. Gerbang Utama
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Link
-                                        href={route('users.index', { role: 'guru_piket' })}
-                                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#E5ECE9] bg-white text-[#0E7452] hover:bg-[#E6F5EE] transition"
-                                        title="Hubungi Guru Piket"
-                                    >
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                                        </svg>
-                                    </Link>
-                                </div>
+                            {piketHariIni.length === 0 ? (
+                                <p className="rounded-xl bg-[#F6F9F8] p-3.5 text-center text-xs text-slate-400">
+                                    Belum ada akun Guru Piket aktif terdaftar.
+                                </p>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {piketHariIni.slice(0, 4).map((piket) => {
+                                        const inisial = (piket.nama || 'GP')
+                                            .trim()
+                                            .split(/\s+/)
+                                            .slice(0, 2)
+                                            .map((w) => w[0]?.toUpperCase() ?? '')
+                                            .join('');
 
-                                <div className="flex items-center justify-between gap-2.5 rounded-xl bg-[#F6F9F8] p-3">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0B6E4F] text-white text-xs font-bold">
-                                            NH
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="truncate text-xs font-bold text-slate-900">
-                                                Nurul Hidayati, S.Pd.
-                                            </p>
-                                            <p className="truncate text-[10.5px] text-slate-400">
-                                                Piket Gedung Lt. 2 & Lab
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Link
-                                        href={route('users.index', { role: 'guru_piket' })}
-                                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#E5ECE9] bg-white text-[#0E7452] hover:bg-[#E6F5EE] transition"
-                                        title="Hubungi Guru Piket"
-                                    >
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                                        </svg>
-                                    </Link>
+                                        return (
+                                            <div
+                                                key={piket.id}
+                                                className="flex items-center justify-between gap-2.5 rounded-xl bg-[#F6F9F8] p-3"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0F382A] text-white text-xs font-bold">
+                                                        {inisial}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-xs font-bold text-slate-900">
+                                                            {piket.nama}
+                                                        </p>
+                                                        <p className="truncate text-[10.5px] text-slate-500">
+                                                            {piket.sudah_absen
+                                                                ? `Hadir ${piket.jam_masuk}`
+                                                                : 'Belum Presensi'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {piket.no_wa ? (
+                                                    <a
+                                                        href={`https://wa.me/${piket.no_wa}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#E5ECE9] bg-white text-[#0E7452] hover:bg-[#E6F5EE] transition"
+                                                        title="Hubungi WhatsApp"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                                                        </svg>
+                                                    </a>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
+                            )}
+                        </div>
+
+                        {/* Card 4: Live Feed Presensi Guru & Staff Hari Ini */}
+                        <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs">
+                            <div className="flex items-center justify-between mb-3.5">
+                                <h3 className="text-sm font-bold text-slate-900">
+                                    Presensi Guru Terbaru
+                                </h3>
+                                <Link
+                                    href={route('absen-harian.rekap')}
+                                    className="text-[11px] font-bold text-[#0E7452] hover:underline"
+                                >
+                                    Lihat Semua →
+                                </Link>
                             </div>
+
+                            {absenGuruTerbaru.length === 0 ? (
+                                <p className="rounded-xl bg-[#F6F9F8] p-3.5 text-center text-xs text-slate-400">
+                                    Belum ada guru atau staff yang melakukan presensi kamera live hari ini.
+                                </p>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {absenGuruTerbaru.slice(0, 4).map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="flex items-center justify-between gap-2 rounded-xl bg-[#F6F9F8] p-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="truncate text-xs font-bold text-slate-900">
+                                                    {item.nama}
+                                                </p>
+                                                <p className="truncate text-[10.5px] text-slate-500">
+                                                    {item.jabatan_label} • {item.jam_masuk}
+                                                </p>
+                                            </div>
+                                            <span
+                                                className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold ${
+                                                    item.status === 'tepat waktu'
+                                                        ? 'bg-[#E6F5EE] text-[#0E7452]'
+                                                        : 'bg-[#FEF3E2] text-[#B45309]'
+                                                }`}
+                                            >
+                                                {item.status === 'tepat waktu'
+                                                    ? 'Tepat'
+                                                    : 'Telat'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

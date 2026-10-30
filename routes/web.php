@@ -34,6 +34,10 @@ Route::middleware(['auth', 'role:guru,guru_piket'])->group(function () {
     Route::post('/absen-harian/pulang', [AbsenHarianController::class, 'pulang'])->name('absen-harian.pulang');
 });
 
+Route::middleware(['auth', 'role:admin,kepsek'])->group(function () {
+    Route::get('/rekap-absen-harian', [AbsenHarianController::class, 'rekap'])->name('absen-harian.rekap');
+});
+
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');

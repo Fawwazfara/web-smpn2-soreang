@@ -256,4 +256,89 @@ class AbsenHarianTest extends TestCase
         $this->actingAs($kepsek)->get(route('absen-harian.foto', $absen))->assertOk();
         $this->actingAs($otherGuru)->get(route('absen-harian.foto', $absen))->assertForbidden();
     }
+
+    public function test_admin_and_kepsek_can_monitor_rekap_absen_harian_while_guru_cannot(): void
+    {
+        Storage::fake('public');
+        Carbon::setTestNow(Carbon::create(2026, 10, 30, 6, 50, 0, 'Asia/Jakarta'));
+
+        $admin = User::factory()->admin()->create();
+        $kepsek = User::factory()->create(['role' => 'kepsek']);
+        $guruHadir = User::factory()->create(['role' => 'guru', 'jenis_pegawai' => 'guru']);
+        $tendikBelum = User::factory()->create(['role' => 'guru', 'jenis_pegawai' => 'tenaga_kependidikan']);
+        $piket = User::factory()->create(['role' => 'guru_piket', 'no_wa' => '6281234567890']);
+
+        $this->actingAs($guruHadir)->post(route('absen-harian.store'), [
+            'foto_capture' => $this->validLiveCaptureDataUri(),
+            'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
+            'sumber' => 'live',
+            'redirect_to' => 'dashboard',
+        ])->assertRedirect(route('dashboard'));
+
+        foreach ([$admin, $kepsek] as $monitorUser) {
+            $this->actingAs($monitorUser)
+                ->get(route('absen-harian.rekap'))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->component('AbsenHarian/Rekap')
+                    ->where('ringkasan.total_wajib_absen', 3)
+                    ->where('ringkasan.total_hadir', 1)
+                    ->where('ringkasan.tepat_waktu', 1)
+                    ->where('ringkasan.belum_absen', 2)
+                );
+        }
+
+        // Filter hanya yang belum absen
+        $this->actingAs($admin)
+            ->get(route('absen-harian.rekap', ['status' => 'belum_absen']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AbsenHarian/Rekap')
+                ->has('rows', 2)
+            );
+
+        // Guru & Guru Piket tidak boleh membuka halaman rekap semua pegawai
+        $this->actingAs($guruHadir)->get(route('absen-harian.rekap'))->assertForbidden();
+        $this->actingAs($tendikBelum)->get(route('absen-harian.rekap'))->assertForbidden();
+        $this->actingAs($piket)->get(route('absen-harian.rekap'))->assertForbidden();
+
+        // Dashboard Admin, Kepsek, Guru, dan Piket tersambung ke data AbsenHarian nyata
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('stats.total_wajib_absen', 3)
+                ->where('stats.hadir_hari_ini', 1)
+                ->where('stats.belum_absen_hari_ini', 2)
+                ->has('absenGuruTerbaru', 1)
+            );
+
+        $this->actingAs($kepsek)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Kepsek/Dashboard')
+                ->where('stats.total_wajib_absen', 3)
+                ->where('stats.hadir_hari_ini', 1)
+                ->has('absenGuruTerbaru', 1)
+            );
+
+        $this->actingAs($guruHadir)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Guru/Dashboard')
+                ->where('absenHariIni.status', 'tepat waktu')
+                ->has('logPekanIni', 3)
+            );
+
+        $this->actingAs($piket)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Piket/Dashboard')
+                ->where('absenHariIni', null)
+            );
+    }
 }

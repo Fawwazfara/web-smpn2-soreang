@@ -34,6 +34,7 @@ class StoreAbsenHarianRequest extends FormRequest
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'akurasi_meter' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'keterangan' => ['nullable', 'string', 'max:255'],
+            'redirect_to' => ['nullable', 'string', Rule::in(['index', 'dashboard'])],
         ];
     }
 
