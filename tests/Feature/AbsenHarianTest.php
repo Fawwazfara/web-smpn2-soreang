@@ -226,6 +226,15 @@ class AbsenHarianTest extends TestCase
         $record->refresh();
         $this->assertNotNull($record->waktu_pulang);
 
+        $this->actingAs($guru)
+            ->get(route('absen-harian.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AbsenHarian/Index')
+                ->where('absenHariIni.jam_masuk', '06:55 WIB')
+                ->where('absenHariIni.jam_pulang', '14:35 WIB')
+            );
+
         // Coba absen pulang kedua kali -> ditolak
         $duplicatePulang = $this->actingAs($guru)->post(route('absen-harian.pulang'), [
             'foto_capture' => $this->validLiveCaptureDataUri(),

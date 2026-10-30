@@ -192,14 +192,15 @@ class AbsenHarianController extends Controller
 
         Storage::disk('public')->put($fotoPath, $capture['binary']);
 
-        $waktuAmbil = Carbon::parse((string) $request->validated('waktu_ambil'))->setTimezone($tz);
+        $appTz = config('app.timezone', 'UTC');
+        $waktuAmbil = Carbon::parse((string) $request->validated('waktu_ambil'))->setTimezone($appTz);
         $keterangan = $this->buildKeteranganLokasi($request);
 
         try {
             AbsenHarian::create([
                 'user_id' => $user->id,
                 'tanggal' => $tanggal,
-                'waktu_masuk' => $now,
+                'waktu_masuk' => $now->copy()->setTimezone($appTz),
                 'waktu_pulang' => null,
                 'waktu_ambil' => $waktuAmbil,
                 'foto_path' => $fotoPath,
@@ -271,7 +272,7 @@ class AbsenHarianController extends Controller
         Storage::disk('public')->put($fotoPulangPath, $capture['binary']);
 
         $absen->update([
-            'waktu_pulang' => $now,
+            'waktu_pulang' => $now->copy()->setTimezone(config('app.timezone', 'UTC')),
         ]);
 
         $targetRoute = $request->validated('redirect_to') === 'dashboard'
