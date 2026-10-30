@@ -74,14 +74,47 @@ export default function Welcome({ auth, berita = [] }) {
         return Array.isArray(berita) ? berita : [];
     }, [berita]);
 
-    // Slider navigation
+    // Slider navigation - use scrollIntoView for precise snap alignment
     const scrollSlider = (direction) => {
-        if (!sliderRef.current) return;
-        const cardWidth = 340; // card width + gap (320px + 20px gap)
-        sliderRef.current.scrollBy({
-            left: direction * cardWidth,
-            behavior: 'smooth'
-        });
+        if (!sliderRef.current || publishedNews.length === 0) return;
+        
+        const currentScroll = sliderRef.current.scrollLeft;
+        const clientWidth = sliderRef.current.clientWidth;
+        const isMobile = clientWidth < 768;
+        
+        // Find the index of the currently centered/visible card
+        let currentIndex = 0;
+        if (isMobile) {
+            // On mobile, find card closest to center
+            const centerX = currentScroll + clientWidth / 2;
+            let minDist = Infinity;
+            publishedNews.forEach((article, i) => {
+                const card = document.getElementById(`article-${article.id}`);
+                if (card) {
+                    const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+                    const dist = Math.abs(cardCenter - centerX);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        currentIndex = i;
+                    }
+                }
+            });
+        } else {
+            // On desktop, find leftmost visible card
+            const cardWidth = 340; // card width + gap (320px + 20px gap)
+            currentIndex = Math.round(currentScroll / cardWidth);
+        }
+        
+        const nextIndex = Math.max(0, Math.min(publishedNews.length - 1, currentIndex + direction));
+        const targetCard = document.getElementById(`article-${publishedNews[nextIndex]?.id}`);
+        
+        if (targetCard) {
+            targetCard.scrollIntoView({
+                behavior: 'smooth',
+                inline: isMobile ? 'center' : 'start',
+                block: 'nearest'
+            });
+        }
     };
 
     const handleSliderScroll = () => {
@@ -481,15 +514,20 @@ export default function Welcome({ auth, berita = [] }) {
                                 style={{
                                     scrollbarWidth: 'none',
                                     msOverflowStyle: 'none',
-                                    WebkitOverflowScrolling: 'touch'
+                                    WebkitOverflowScrolling: 'touch',
+                                    // Mobile: center snap with padding; Desktop: start snap
+                                    scrollPaddingInline: 'calc((100% - min(85vw, 340px)) / 2)',
                                 }}
                             >
-                                {publishedNews.map((article) => (
+                                {publishedNews.map((article, index) => (
                                     <article
                                         key={article.id}
+                                        id={`article-${article.id}`}
                                         onClick={() => setActiveArticle(article)}
-                                        className="flex-shrink-0 w-[85vw] sm:w-[320px] scroll-snap-start bg-white rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
-                                        style={{ borderColor: article.is_pinned ? '#006C4A' : '#e5e7eb' }}
+                                        className="flex-shrink-0 w-[85vw] sm:w-[320px] scroll-snap-center sm:scroll-snap-start bg-white rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
+                                        style={{ 
+                                            borderColor: article.is_pinned ? '#006C4A' : '#e5e7eb',
+                                        }}
                                     >
                                         <div className="relative h-48 w-full overflow-hidden bg-gray-100 rounded-t-2xl">
                                             <ArticleImage

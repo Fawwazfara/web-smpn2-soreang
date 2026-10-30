@@ -33,6 +33,12 @@ export const SIDEBAR_NAV = {
             ],
         },
         {
+            title: 'INFORMASI',
+            items: [
+                { label: 'Berita & Warta', route: 'admin.berita.index', icon: 'doc-fold' },
+            ],
+        },
+        {
             title: 'ATTENDANCE',
             items: [
                 { label: 'Presensi Guru (Geofence)', route: null, icon: 'map-pin' },
@@ -80,6 +86,12 @@ export const SIDEBAR_NAV = {
             items: [
                 { label: 'Dashboard', route: 'dashboard', icon: 'grid-4' },
                 { label: 'Live Monitor Kelas', route: null, icon: 'broadcast', liveDot: true },
+            ],
+        },
+        {
+            title: 'INFORMASI',
+            items: [
+                { label: 'Berita & Warta', route: 'admin.berita.index', icon: 'doc-fold' },
             ],
         },
         {
