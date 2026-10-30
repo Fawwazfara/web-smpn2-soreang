@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AbsenHarianController;
 use App\Http\Controllers\Admin\BeritaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JamPelajaranController;
@@ -23,6 +24,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/absen-harian/{absenHarian}/foto', [AbsenHarianController::class, 'foto'])->name('absen-harian.foto');
+});
+
+Route::middleware(['auth', 'role:guru,guru_piket'])->group(function () {
+    Route::get('/absen-harian', [AbsenHarianController::class, 'index'])->name('absen-harian.index');
+    Route::post('/absen-harian', [AbsenHarianController::class, 'store'])->name('absen-harian.store');
+    Route::post('/absen-harian/pulang', [AbsenHarianController::class, 'pulang'])->name('absen-harian.pulang');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
