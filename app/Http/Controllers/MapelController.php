@@ -26,8 +26,12 @@ class MapelController extends Controller
             ->orderBy('kode')
             ->get();
 
+        $sesi = $request->query('sesi', 'pagi');
+        $hari = $request->query('hari', 1);
+
         $jamPelajaran = JamPelajaran::query()
-            ->orderBy('kelompok_hari')
+            ->where('sesi', $sesi)
+            ->where('hari', $hari)
             ->orderBy('jam_ke')
             ->get();
 
@@ -44,6 +48,8 @@ class MapelController extends Controller
         return Inertia::render('Admin/Mapel/Index', [
             'mapel' => $mapel,
             'jamPelajaran' => $jamPelajaran,
+            'selectedSesi' => $sesi,
+            'selectedHari' => $hari,
             'tahunAjaranAktif' => $tahunAjaranAktif,
             'gurus' => $gurus,
             'flash' => [

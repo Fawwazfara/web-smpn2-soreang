@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import ArticleImage from '@/Components/ArticleImage';
 
 // Default gallery data matching the screenshot
@@ -65,71 +65,11 @@ export default function Welcome({ auth, berita = [] }) {
     const [selectedCategory, setSelectedCategory] = useState('Semua');
     const [activeArticle, setActiveArticle] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [sliderScrollLeft, setSliderScrollLeft] = useState(0);
-    const [showArrows, setShowArrows] = useState(false);
-    const sliderRef = useRef(null);
 
     // Published news from props - already sorted by backend: pinned first (pinned_at DESC), then by tanggal DESC
     const publishedNews = useMemo(() => {
         return Array.isArray(berita) ? berita : [];
     }, [berita]);
-
-    // Slider navigation - use scrollIntoView for precise snap alignment
-    const scrollSlider = (direction) => {
-        if (!sliderRef.current || publishedNews.length === 0) return;
-        
-        const currentScroll = sliderRef.current.scrollLeft;
-        const clientWidth = sliderRef.current.clientWidth;
-        const isMobile = clientWidth < 768;
-        
-        // Find the index of the currently centered/visible card
-        let currentIndex = 0;
-        if (isMobile) {
-            // On mobile, find card closest to center
-            const centerX = currentScroll + clientWidth / 2;
-            let minDist = Infinity;
-            publishedNews.forEach((article, i) => {
-                const card = document.getElementById(`article-${article.id}`);
-                if (card) {
-                    const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-                    const dist = Math.abs(cardCenter - centerX);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        currentIndex = i;
-                    }
-                }
-            });
-        } else {
-            // On desktop, find leftmost visible card
-            const cardWidth = 340; // card width + gap (320px + 20px gap)
-            currentIndex = Math.round(currentScroll / cardWidth);
-        }
-        
-        const nextIndex = Math.max(0, Math.min(publishedNews.length - 1, currentIndex + direction));
-        const targetCard = document.getElementById(`article-${publishedNews[nextIndex]?.id}`);
-        
-        if (targetCard) {
-            targetCard.scrollIntoView({
-                behavior: 'smooth',
-                inline: isMobile ? 'center' : 'start',
-                block: 'nearest'
-            });
-        }
-    };
-
-    const handleSliderScroll = () => {
-        if (!sliderRef.current) return;
-        const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
-        const maxScroll = scrollWidth - clientWidth;
-        setSliderScrollLeft(scrollLeft);
-        // Show arrows only if content overflows
-        setShowArrows(maxScroll > 10);
-    };
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'ArrowLeft') scrollSlider(-1);
-        if (e.key === 'ArrowRight') scrollSlider(1);
-    };
 
     const filteredGallery = useMemo(() => {
         if (selectedCategory === 'Semua') return GALLERY_ITEMS;
@@ -431,158 +371,103 @@ export default function Welcome({ auth, berita = [] }) {
 
             {/* SCHOOL NEWS SECTION */}
 <section id="berita" className="py-20 bg-[#f7faf8] border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Header with navigation arrows */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4 relative">
-                        <div>
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                PUSAT INFORMASI RESMI
-                            </span>
-                            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0d2e23] tracking-tight mt-2">
-                                Kabar Terkini SMPN 2 Soreang
-                            </h2>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Dokumentasi prestasi, agenda akademik berkala, dan siaran pengumuman penting bagi wali murid dan peserta didik.
-                            </p>
-                        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+            <div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                    PUSAT INFORMASI RESMI
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0d2e23] tracking-tight mt-2">
+                    Kabar Terkini SMPN 2 Soreang
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                    Dokumentasi prestasi, agenda akademik berkala, dan siaran pengumuman penting bagi wali murid dan peserta didik.
+                </p>
+            </div>
 
-                        {/* Navigation arrows in header */}
-                        {showArrows && (
-                            <div className="flex items-center gap-2 ml-auto">
-                                <button
-                                    type="button"
-                                    onClick={() => scrollSlider(-1)}
-                                    onKeyDown={handleKeyDown}
-                                    disabled={sliderScrollLeft <= 10}
-                                    aria-label="Berita sebelumnya"
-                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => scrollSlider(1)}
-                                    onKeyDown={handleKeyDown}
-                                    disabled={sliderRef.current && sliderScrollLeft >= sliderRef.current.scrollWidth - sliderRef.current.clientWidth - 10}
-                                    aria-label="Berita berikutnya"
-                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </button>
+            <div className="flex items-center gap-3">
+                {auth?.user?.role === 'admin' ? (
+                    <Link
+                        href={route('admin.berita.index')}
+                        className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 border border-emerald-300 rounded-full px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm"
+                    >
+                        <span>Kelola Berita (Admin)</span>
+                        <span>&rarr;</span>
+                    </Link>
+                ) : (
+                    <Link
+                        href="/berita"
+                        className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 hover:underline"
+                    >
+                        <span>Arsip Berita & Warta Lengkap</span>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </Link>
+                )}
+            </div>
+        </div>
+
+        {/* News Grid */}
+        {publishedNews.length === 0 ? (
+            <div className="p-12 text-center bg-white rounded-2xl border border-gray-200">
+                <p className="text-base font-semibold text-gray-700">Belum ada berita saat ini.</p>
+                <p className="text-sm text-gray-400 mt-1">Berita terbaru sekolah akan ditampilkan segera setelah dirilis oleh bagian humas.</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {publishedNews.slice(0, 4).map((article) => (
+                    <div key={article.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col group">
+                        <Link href={`/berita/${article.slug || article.id}`} className="block focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-2xl">
+                            {/* Container Gambar dengan Fixed Height - Natural Aspect Ratio */}
+                            <div className="relative h-52 w-full bg-slate-50 flex items-center justify-center p-3 overflow-hidden">
+                                <img
+                                    src={article.gambar_path || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80'}
+                                    alt={article.judul}
+                                    className="max-h-full max-w-full object-contain rounded-lg shadow-sm group-hover:scale-105 transition-transform duration-300"
+                                />
+                                <span className="absolute top-4 left-4 px-3 py-1 text-xs font-medium text-white bg-black/60 backdrop-blur-md rounded-full z-10">
+                                    {article.kategori}
+                                </span>
+                                {article.is_pinned && (
+                                    <span className="absolute top-4 right-4 px-2.5 py-1 text-xs font-bold bg-emerald-600 text-white uppercase tracking-wider flex items-center gap-1 shadow-sm z-10">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                        Disematkan
+                                    </span>
+                                )}
                             </div>
-                        )}
 
-                        {auth?.user?.role === 'admin' ? (
-                            <Link
-                                href={route('admin.berita.index')}
-                                className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 border border-emerald-300 rounded-full px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm"
-                            >
-                                <span>Kelola Berita (Admin)</span>
-                                <span>&rarr;</span>
-                            </Link>
-                        ) : (
-                            <a
-                                href="#berita"
-                                className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 hover:underline"
-                            >
-                                <span>Arsip Berita & Warta Lengkap</span>
-                                <span>&rarr;</span>
-                            </a>
-                        )}
+                            {/* Container Konten Teks */}
+                            <div className="p-5 flex flex-col flex-grow justify-between">
+                                <div>
+                                    <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                                        <time>{formatDateIndo(article.tanggal)}</time>
+                                    </div>
+                                    <h3 className="font-semibold text-slate-800 line-clamp-2 mb-2 group-hover:text-emerald-600 transition-colors">
+                                        {article.judul}
+                                    </h3>
+                                    <p className="text-xs text-slate-500 line-clamp-2">
+                                        {article.ringkasan || article.isi?.substring(0, 120) || 'Tidak ada ringkasan'}
+                                    </p>
+                                </div>
+
+                                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                    <span className="text-xs font-medium text-emerald-600 group-hover:underline">
+                                        Selengkapnya →
+                                    </span>
+                                </div>
+                            </div>
+                        </Link>
                     </div>
-
-                    {/* News Content - Single full-width slider */}
-                    {publishedNews.length === 0 ? (
-                        <div className="p-12 text-center bg-white rounded-2xl border border-gray-200">
-                            <p className="text-base font-semibold text-gray-700">Belum ada berita saat ini.</p>
-                            <p className="text-sm text-gray-400 mt-1">Berita terbaru sekolah akan ditampilkan segera setelah dirilis oleh bagian humas.</p>
-                        </div>
-                    ) : (
-                        <div className="relative">
-                            {/* Slider container */}
-                            <div
-                                ref={sliderRef}
-                                onScroll={handleSliderScroll}
-                                onKeyDown={handleKeyDown}
-                                tabIndex={0}
-                                className="flex gap-4 overflow-x-auto scroll-snap-x scroll-snap-mandatory scroll-behavior-smooth pb-4 -ml-4 pl-4"
-                                style={{
-                                    scrollbarWidth: 'none',
-                                    msOverflowStyle: 'none',
-                                    WebkitOverflowScrolling: 'touch',
-                                    // Mobile: center snap with padding; Desktop: start snap
-                                    scrollPaddingInline: 'calc((100% - min(85vw, 340px)) / 2)',
-                                }}
-                            >
-                                {publishedNews.map((article, index) => (
-                                    <article
-                                        key={article.id}
-                                        id={`article-${article.id}`}
-                                        onClick={() => setActiveArticle(article)}
-                                        className="flex-shrink-0 w-[85vw] sm:w-[320px] scroll-snap-center sm:scroll-snap-start bg-white rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
-                                        style={{ 
-                                            borderColor: article.is_pinned ? '#006C4A' : '#e5e7eb',
-                                        }}
-                                    >
-                                        <div className="relative h-48 w-full overflow-hidden bg-gray-100 rounded-t-2xl">
-                                            <ArticleImage
-                                                src={
-                                                    article.gambar_path ||
-                                                    'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80'
-                                                }
-                                                alt={article.judul}
-                                                aspectRatio="16/9"
-                                                showBadge
-                                                badgeText={article.kategori}
-                                                enableLightbox
-                                            />
-                                            {/* Pin badge for pinned articles */}
-                                            {article.is_pinned && (
-                                                <div className="absolute top-3 right-3 z-20">
-                                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                                        </svg>
-                                                        Disematkan
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="p-5 flex-1 flex flex-col justify-between">
-                                            <div>
-                                                <div className="flex items-center justify-between text-xs mb-1.5">
-                                                    <span className="font-bold text-emerald-700 uppercase tracking-wider text-[11px]">
-                                                        {article.kategori}
-                                                    </span>
-                                                    <span className="text-gray-400">
-                                                        {formatDateIndo(article.tanggal)}
-                                                    </span>
-                                                </div>
-                                                <h4 className="text-base font-bold text-gray-900 leading-snug hover:text-emerald-700 transition line-clamp-2">
-                                                    {article.judul}
-                                                </h4>
-                                                <p className="text-xs text-gray-500 mt-2 line-clamp-3 leading-relaxed">
-                                                    {article.ringkasan || article.isi}
-                                                </p>
-                                            </div>
-                                            <div className="mt-4 pt-2 flex justify-between items-center text-xs border-t border-gray-100">
-                                                <span className="font-semibold text-emerald-700 inline-flex items-center gap-1 hover:underline">
-                                                    Selengkapnya &rarr;
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </article>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </section>
+                ))}
+            </div>
+        )}
+    </div>
+</section>
             {/* SCHOOL ACTIVITIES AND FACILITIES GALLERY */}
             <section id="galeri" className="py-20 bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

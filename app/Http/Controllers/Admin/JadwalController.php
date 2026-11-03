@@ -14,6 +14,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -47,10 +48,16 @@ class JadwalController extends Controller
             }
         }
 
+        $sesi = $request->query('sesi', 'pagi');
+        $hari = $request->query('hari', 1);
+
         $kelasList = Kelas::orderBy('tingkat')->orderBy('nama')->get();
         $mapelList = Mapel::orderBy('nama')->get();
         $guruList = User::where('role', 'guru')->orderBy('nama')->get();
-        $jamList = JamPelajaran::orderBy('kelompok_hari')->orderBy('jam_ke')->get();
+        $jamList = JamPelajaran::where('sesi', $sesi)
+            ->where('hari', $hari)
+            ->orderBy('jam_ke')
+            ->get();
 
         return Inertia::render('Admin/Jadwal/Index', [
             'versions' => $versions,
@@ -60,6 +67,8 @@ class JadwalController extends Controller
             'mapelList' => $mapelList,
             'guruList' => $guruList,
             'jamList' => $jamList,
+            'selectedSesi' => $sesi,
+            'selectedHari' => $hari,
             'flash' => [
                 'message' => session('success'),
                 'error' => session('error'),
@@ -82,7 +91,7 @@ class JadwalController extends Controller
 
         $versi = JadwalVersi::create($validated);
 
-        return redirect()->route('admin.jadwal.index', ['versi_id' => $versi->id])
+        return redirect()->route('jadwal.index', ['versi_id' => $versi->id])
             ->with('success', 'Versi jadwal baru berhasil dibuat (Draf).');
     }
 
@@ -99,7 +108,7 @@ class JadwalController extends Controller
 
         $jadwalVersi->update($validated);
 
-        return redirect()->route('admin.jadwal.index', ['versi_id' => $jadwalVersi->id])
+        return redirect()->route('jadwal.index', ['versi_id' => $jadwalVersi->id])
             ->with('success', 'Versi jadwal berhasil diperbarui.');
     }
 
@@ -114,7 +123,7 @@ class JadwalController extends Controller
         // Set this version to active
         $jadwalVersi->update(['status' => 'aktif']);
 
-        return redirect()->route('admin.jadwal.index', ['versi_id' => $jadwalVersi->id])
+        return redirect()->route('jadwal.index', ['versi_id' => $jadwalVersi->id])
             ->with('success', "Versi jadwal '{$jadwalVersi->nama}' resmi diterbitkan sebagai Jadwal Aktif.");
     }
 
@@ -153,7 +162,7 @@ class JadwalController extends Controller
             ]);
         }
 
-        return redirect()->route('admin.jadwal.index', ['versi_id' => $jadwalVersi->id])
+        return redirect()->route('jadwal.index', ['versi_id' => $jadwalVersi->id])
             ->with('success', 'Slot jadwal berhasil disalin dari versi sumber.');
     }
 
@@ -168,7 +177,7 @@ class JadwalController extends Controller
 
         $jadwalVersi->delete();
 
-        return redirect()->route('admin.jadwal.index')
+        return redirect()->route('jadwal.index')
             ->with('success', 'Versi jadwal berhasil dihapus.');
     }
 
@@ -182,19 +191,21 @@ class JadwalController extends Controller
             'jam_pelajaran_id' => ['required', 'exists:jam_pelajaran,id'],
             'kelas_id' => ['required', 'exists:kelas,id'],
             'mapel_id' => ['required', 'exists:mapel,id'],
-            'guru_id' => ['required', 'exists:users,id'],
+            'guru_id' => ['nullable', 'exists:users,id'],
         ]);
 
-        // Check teacher conflict: Is this teacher already teaching another class at the same day and jam_pelajaran_id in this version?
-        $teacherConflict = JadwalSlot::where('versi_id', $jadwalVersi->id)
-            ->where('hari', $validated['hari'])
-            ->where('jam_pelajaran_id', $validated['jam_pelajaran_id'])
-            ->where('guru_id', $validated['guru_id'])
-            ->where('kelas_id', '!=', $validated['kelas_id'])
-            ->exists();
+        // Check teacher conflict only if guru_id is provided
+        if ($validated['guru_id']) {
+            $teacherConflict = JadwalSlot::where('versi_id', $jadwalVersi->id)
+                ->where('hari', $validated['hari'])
+                ->where('jam_pelajaran_id', $validated['jam_pelajaran_id'])
+                ->where('guru_id', $validated['guru_id'])
+                ->where('kelas_id', '!=', $validated['kelas_id'])
+                ->exists();
 
-        if ($teacherConflict) {
-            return back()->with('error', 'Bentrok Guru: Guru tersebut sudah dijadwalkan mengajar di kelas lain pada hari dan jam pelajaran yang sama.');
+            if ($teacherConflict) {
+                return back()->with('error', 'Bentrok Guru: Guru tersebut sudah dijadwalkan mengajar di kelas lain pada hari dan jam pelajaran yang sama.');
+            }
         }
 
         JadwalSlot::updateOrCreate(
@@ -210,7 +221,7 @@ class JadwalController extends Controller
             ]
         );
 
-        return redirect()->route('admin.jadwal.index', ['versi_id' => $jadwalVersi->id])
+        return redirect()->route('jadwal.index', ['versi_id' => $jadwalVersi->id])
             ->with('success', 'Slot jadwal berhasil disimpan.');
     }
 
@@ -222,7 +233,7 @@ class JadwalController extends Controller
         $versiId = $jadwalSlot->versi_id;
         $jadwalSlot->delete();
 
-        return redirect()->route('admin.jadwal.index', ['versi_id' => $versiId])
+        return redirect()->route('jadwal.index', ['versi_id' => $versiId])
             ->with('success', 'Slot jadwal berhasil dihapus.');
     }
 
@@ -234,10 +245,12 @@ class JadwalController extends Controller
         $validated = $request->validate([
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
+            'sesi' => ['required', 'string', Rule::in(['pagi', 'siang'])],
         ]);
 
         $startDate = Carbon::parse($validated['tanggal_mulai']);
         $endDate = Carbon::parse($validated['tanggal_selesai']);
+        $sesi = $validated['sesi'];
 
         // Find active version covering or overlapping range, or the currently active version
         $activeVersion = JadwalVersi::where('status', 'aktif')->first();
@@ -245,9 +258,14 @@ class JadwalController extends Controller
             return back()->with('error', 'Tidak ada versi jadwal yang berstatus AKTIF. Terbitkan versi jadwal terlebih dahulu sebelum generate sesi.');
         }
 
-        $slots = $activeVersion->jadwalSlot()->get();
+        $slots = $activeVersion->jadwalSlot()
+            ->join('jam_pelajaran', 'jadwal_slot.jam_pelajaran_id', '=', 'jam_pelajaran.id')
+            ->where('jam_pelajaran.sesi', $sesi)
+            ->select('jadwal_slot.*')
+            ->get();
+
         if ($slots->isEmpty()) {
-            return back()->with('error', 'Versi jadwal aktif tidak memiliki slot jadwal.');
+            return back()->with('error', "Versi jadwal aktif tidak memiliki slot jadwal untuk sesi {$sesi}.");
         }
 
         $generatedCount = 0;
@@ -261,7 +279,7 @@ class JadwalController extends Controller
             // Skip Sunday or holidays
             $isHoliday = HariLibur::whereDate('tanggal', $current->toDateString())->exists();
 
-            if ($dayOfWeek >= 1 && $dayOfWeek <= 6 && !$isHoliday) {
+            if ($dayOfWeek >= 1 && $dayOfWeek <= 5 && !$isHoliday) {
                 // Find slots for this day of week
                 $daySlots = $slots->where('hari', $dayOfWeek);
 
@@ -286,7 +304,7 @@ class JadwalController extends Controller
             $current->addDay();
         }
 
-        return redirect()->route('admin.jadwal.index', ['versi_id' => $activeVersion->id])
-            ->with('success', "Berhasil men-generate {$generatedCount} sesi harian dari tanggal {$startDate->format('d/m/Y')} s.d. {$endDate->format('d/m/Y')}.");
+        return redirect()->route('jadwal.index', ['versi_id' => $activeVersion->id, 'sesi' => $sesi])
+            ->with('success', "Berhasil men-generate {$generatedCount} sesi harian (sesi {$sesi}) dari tanggal {$startDate->format('d/m/Y')} s.d. {$endDate->format('d/m/Y')}.");
     }
 }
