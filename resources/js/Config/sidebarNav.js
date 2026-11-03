@@ -49,7 +49,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'JADWAL & SESI',
             items: [
-                { label: 'Matriks Jadwal KBM', route: null, icon: 'calendar-grid' },
+                { label: 'Matriks Jadwal KBM', route: 'jadwal.index', icon: 'calendar-grid' },
                 { label: 'Guru Piket & Pengganti', route: 'users.index', icon: 'portrait-badge', routeParams: { role: 'guru_piket' }, exactRoleMatch: 'guru_piket' },
             ],
         },
@@ -105,7 +105,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'JADWAL & SESI',
             items: [
-                { label: 'Matriks Jadwal KBM', route: null, icon: 'calendar-grid' },
+                { label: 'Matriks Jadwal KBM', route: 'jadwal.index', icon: 'calendar-grid' },
                 { label: 'Guru Piket & Pengganti', route: null, icon: 'portrait-badge' },
             ],
         },
