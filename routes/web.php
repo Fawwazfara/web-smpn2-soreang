@@ -80,6 +80,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::post('/jadwal/versi/{jadwalVersi}/slot', [JadwalController::class, 'storeSlot'])->name('jadwal.slot.store');
     Route::delete('/jadwal/slot/{jadwalSlot}', [JadwalController::class, 'destroySlot'])->name('jadwal.slot.destroy');
+    Route::post('/jadwal/versi/{jadwalVersi}/bulk-copy', [JadwalController::class, 'bulkCopySlots'])->name('jadwal.slot.bulk-copy');
 
     Route::post('/jadwal/generate-sesi', [JadwalController::class, 'generateSesi'])->name('jadwal.generate-sesi');
 });
