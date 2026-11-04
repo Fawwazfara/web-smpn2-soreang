@@ -1,16 +1,122 @@
 import Modal from '@/Components/Modal';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
-export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }) {
+export default function Dashboard({ piketHariIni = [], sesiHariIni = [], tahunAjaranAktif = null }) {
     const user = usePage().props.auth.user;
+    const { flash } = usePage().props;
     const [now, setNow] = useState(() => new Date());
     const [showPiketModal, setShowPiketModal] = useState(false);
+    const [generatingSesi, setGeneratingSesi] = useState(null);
+    const [activeKodeModal, setActiveKodeModal] = useState(null);
+    const [copied, setCopied] = useState(false);
+    const [replacementToast, setReplacementToast] = useState(null);
     const [cameraActive, setCameraActive] = useState(false);
     const [cameraNote, setCameraNote] = useState(null);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
+    const previousReplacedIds = useRef(new Set());
+
+    // 1. Inisialisasi previous replaced IDs
+    useEffect(() => {
+        sesiHariIni.forEach((s) => {
+            if (s.guru_pengganti || s.status === 'digantikan') {
+                previousReplacedIds.current.add(s.id);
+            }
+        });
+    }, []);
+
+    // 2. Deteksi perubahan sesi yang baru saja digantikan saat polling data
+    useEffect(() => {
+        sesiHariIni.forEach((s) => {
+            const isNowReplaced = Boolean(s.guru_pengganti || s.status === 'digantikan');
+            if (isNowReplaced && !previousReplacedIds.current.has(s.id)) {
+                previousReplacedIds.current.add(s.id);
+
+                // Jika modal kode aktif sedang terbuka untuk sesi ini, tutup
+                if (activeKodeModal?.sesi_id === s.id) {
+                    setActiveKodeModal(null);
+                }
+
+                // Munculkan notifikasi toast
+                setReplacementToast({
+                    mapel: s.mapel?.nama,
+                    kelas: s.kelas?.nama,
+                    piketNama: s.guru_pengganti?.nama || 'Guru Piket',
+                });
+            }
+        });
+    }, [sesiHariIni]);
+
+    // 3. Polling status penggantian (PRD Bagian 3 poin 6)
+    // Berjalan hanya jika ada sesi yang memiliki kode aktif dan belum digantikan
+    const hasPendingReplacement = sesiHariIni.some(
+        (s) => s.active_kode && !s.guru_pengganti && s.status !== 'digantikan'
+    );
+
+    useEffect(() => {
+        if (!hasPendingReplacement) return;
+
+        const pollTimer = setInterval(() => {
+            router.reload({
+                only: ['sesiHariIni'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 10000); // Poll setiap 10 detik
+
+        return () => clearInterval(pollTimer);
+    }, [hasPendingReplacement]);
+
+    // 4. Hitung sisa masa berlaku kode (countdown helper)
+    const getRemainingTime = (isoExpiry) => {
+        if (!isoExpiry) return null;
+        const diff = new Date(isoExpiry) - now;
+        if (diff <= 0) return 'Kadaluarsa';
+        const totalMinutes = Math.floor(diff / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const seconds = Math.floor((diff % 60000) / 1000);
+        if (hours > 0) {
+            return `${hours}j ${minutes}m`;
+        }
+        return `${minutes}m ${seconds}d`;
+    };
+
+    useEffect(() => {
+        if (flash?.generated_kode) {
+            setActiveKodeModal(flash.generated_kode);
+        }
+    }, [flash]);
+
+    const handleGenerateKode = (sesi) => {
+        setGeneratingSesi(sesi.id);
+        router.post(
+            route('sesi.generate-kode', sesi.id),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    setGeneratingSesi(null);
+                    if (page.props.flash?.generated_kode) {
+                        setActiveKodeModal(page.props.flash.generated_kode);
+                    }
+                },
+                onError: () => {
+                    setGeneratingSesi(null);
+                },
+            }
+        );
+    };
+
+    const handleCopyKode = (kode) => {
+        if (navigator?.clipboard?.writeText) {
+            navigator.clipboard.writeText(kode);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        }
+    };
 
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000);
@@ -153,20 +259,15 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                                 onClick={() => setShowPiketModal(true)}
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-[#2A7E5F] bg-[#166246] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1D7756] transition"
                             >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                                <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
                                 </svg>
-                                Koordinasi Admin
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setShowPiketModal(true)}
-                                title="Daftar Guru Piket Hari Ini"
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20 transition"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                                </svg>
+                                Guru Piket Hari Ini
+                                {piketHariIni.length > 0 && (
+                                    <span className="px-1.5 py-0.2 rounded-full bg-[#34D399] text-[#064E3B] text-[10px] font-bold">
+                                        {piketHariIni.length}
+                                    </span>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -321,10 +422,10 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                                     onClick={() => setShowPiketModal(true)}
                                     className="w-full rounded-xl bg-[#EDF2FA] py-2.5 px-4 text-xs font-semibold text-slate-700 hover:bg-[#E1EAF6] transition flex items-center justify-center gap-2"
                                 >
-                                    <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                    <svg className="w-4 h-4 text-[#0E7452]" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
                                     </svg>
-                                    Ajukan Izin / Dispensasi Tugas Luar
+                                    Berhalangan Hadir? Hubungi Guru Piket
                                 </button>
                             </div>
 
@@ -441,121 +542,106 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v3m8-3v3M3.5 9.5h17" />
                                     </svg>
                                     <h3 className="text-base font-bold text-slate-900">
-                                        Jadwal Mengajar Hari Ini
+                                        Jadwal Sesi Mengajar Hari Ini
                                     </h3>
                                 </div>
                                 <div className="text-[11px] font-medium text-slate-500">
                                     {formattedShortDate} •{' '}
                                     <span className="font-bold text-[#0E7452]">
-                                        Total: 6 Jam Pelajaran
+                                        Total: {sesiHariIni.length} Sesi Terjadwal
                                     </span>
                                 </div>
                             </div>
 
+                            {/* Flash alert error/success if any */}
+                            {flash?.error && (
+                                <div className="mb-4 rounded-xl border border-rose-200 bg-[#FFF5F5] p-3 text-xs font-semibold text-[#DC2626]">
+                                    {flash.error}
+                                </div>
+                            )}
+                            {flash?.success && (
+                                <div className="mb-4 rounded-xl border border-[#CBE9DA] bg-[#EDF6F1] p-3 text-xs font-semibold text-[#0F382A]">
+                                    {flash.success}
+                                </div>
+                            )}
+
                             <div className="space-y-3">
-                                {/* JAM 1-2 */}
-                                <div className="flex items-center justify-between gap-3 rounded-xl bg-[#F7FAF9] p-3.5">
-                                    <div className="flex items-center gap-3.5 min-w-0">
-                                        <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[#0D3124] text-white leading-none">
-                                            <span className="text-[8.5px] font-bold uppercase tracking-wider text-[#9BF6C8]">
-                                                JAM
-                                            </span>
-                                            <span className="mt-0.5 text-xs font-extrabold">1–2</span>
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-xs sm:text-[13.5px] font-bold text-slate-900">
-                                                    Matematika • Kelas VII–A
-                                                </span>
-                                                <span className="rounded-md bg-[#E5F6ED] px-2 py-0.5 text-[10px] font-bold text-[#0E7452]">
-                                                    Siap Absensi
-                                                </span>
-                                            </div>
-                                            <p className="mt-0.5 text-[11px] text-slate-500">
-                                                07:00 - 08:30 WIB • Ruang 04, Gedung A • 32 Siswa
-                                            </p>
-                                        </div>
+                                {sesiHariIni.length === 0 ? (
+                                    <div className="rounded-xl border border-dashed border-[#DCE5E1] bg-[#F8FAF9] p-6 text-center text-xs text-slate-500">
+                                        Tidak ada jadwal sesi mengajar aktif untuk Anda pada hari ini.
                                     </div>
-                                    <span className="text-slate-600 shrink-0 pr-1">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 6.75h9m-9 4.5h9m-9 4.5h5.25m6-2.25l1.5 1.5 3-3" />
-                                        </svg>
-                                    </span>
-                                </div>
+                                ) : (
+                                    sesiHariIni.map((sesi) => {
+                                        const jamMulai = sesi.jam_pelajaran?.mulai ? sesi.jam_pelajaran.mulai.slice(0, 5) : '-';
+                                        const jamSelesai = sesi.jam_pelajaran?.selesai ? sesi.jam_pelajaran.selesai.slice(0, 5) : '-';
+                                        const isReplaced = sesi.guru_pengganti !== null || sesi.status === 'digantikan';
 
-                                {/* JAM 3-4 */}
-                                <div className="flex items-center justify-between gap-3 rounded-xl border border-[#F0F4F2] bg-white p-3.5">
-                                    <div className="flex items-center gap-3.5 min-w-0">
-                                        <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[#EBF2FF] text-slate-900 leading-none">
-                                            <span className="text-[8.5px] font-bold uppercase tracking-wider text-slate-600">
-                                                JAM
-                                            </span>
-                                            <span className="mt-0.5 text-xs font-extrabold">3–4</span>
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-xs sm:text-[13.5px] font-bold text-slate-900">
-                                                    Matematika • Kelas VIII–B
-                                                </span>
-                                                <span className="rounded-md bg-[#EBF2FF] px-2 py-0.5 text-[10px] font-bold text-[#1E40AF]">
-                                                    Terjadwal
-                                                </span>
-                                            </div>
-                                            <p className="mt-0.5 text-[11px] text-slate-500">
-                                                08:45 - 10:15 WIB • Lab Komputer 1 (Praktik Geogebra) • 30 Siswa
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="hidden sm:flex items-center gap-2 shrink-0">
-                                        <span className="rounded-lg bg-[#F6F9F8] px-2.5 py-1.5 text-[10.5px] font-semibold text-slate-500 text-center leading-tight">
-                                            Menunggu<br />Sesi
-                                        </span>
-                                        <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-                                        </svg>
-                                    </div>
-                                </div>
+                                        return (
+                                            <div
+                                                key={sesi.id}
+                                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[#F0F4F2] bg-white p-3.5 hover:border-[#34D399] transition"
+                                            >
+                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[#0D3124] text-white leading-none">
+                                                        <span className="text-[8.5px] font-bold uppercase tracking-wider text-[#9BF6C8]">
+                                                            JAM
+                                                        </span>
+                                                        <span className="mt-0.5 text-xs font-extrabold">
+                                                            {sesi.jam_pelajaran?.jam_ke ?? '-'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="text-xs sm:text-[13.5px] font-bold text-slate-900">
+                                                                {sesi.mapel?.nama ?? 'Mata Pelajaran'} • Kelas {sesi.kelas?.nama ?? '-'}
+                                                            </span>
+                                                            {isReplaced ? (
+                                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#82F5C1]/30 border border-[#006C4A]/30 px-2.5 py-0.5 text-[10px] font-bold text-[#002114]">
+                                                                    <svg className="w-3 h-3 text-[#006C4A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                    Sudah Digantikan oleh: {sesi.guru_pengganti?.nama}
+                                                                </span>
+                                                            ) : sesi.active_kode ? (
+                                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF3E2] border border-[#B45309]/30 px-2.5 py-0.5 text-[10px] font-bold text-[#B45309]">
+                                                                    <span className="h-1.5 w-1.5 rounded-full bg-[#B45309] animate-pulse" />
+                                                                    Kode: {sesi.active_kode.kode} (Sisa: {getRemainingTime(sesi.active_kode.berlaku_sampai)})
+                                                                </span>
+                                                            ) : (
+                                                                <span className="rounded-md bg-[#E5F6ED] px-2 py-0.5 text-[10px] font-bold text-[#0E7452]">
+                                                                    Sesi Terjadwal
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="mt-0.5 text-[11px] text-slate-500">
+                                                            {jamMulai} - {jamSelesai} WIB • SMPN 2 Soreang
+                                                        </p>
+                                                    </div>
+                                                </div>
 
-                                {/* Mint Break Strip */}
-                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#EDF7F2] px-4 py-2.5 text-[10.5px] font-extrabold text-[#0E7452]">
-                                    <span className="uppercase tracking-wider">
-                                        ☕ ISTIRAHAT PAGI • PIKET PENGAWASAN KORIDOR
-                                    </span>
-                                    <span>10:15 - 10:30 WIB (15 Menit)</span>
-                                </div>
-
-                                {/* JAM 5-6 */}
-                                <div className="flex items-center justify-between gap-3 rounded-xl border border-[#F0F4F2] bg-white p-3.5">
-                                    <div className="flex items-center gap-3.5 min-w-0">
-                                        <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[#EBF2FF] text-slate-900 leading-none">
-                                            <span className="text-[8.5px] font-bold uppercase tracking-wider text-slate-600">
-                                                JAM
-                                            </span>
-                                            <span className="mt-0.5 text-xs font-extrabold">5–6</span>
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-xs sm:text-[13.5px] font-bold text-slate-900">
-                                                    Matematika • Kelas IX–D
-                                                </span>
-                                                <span className="rounded-md bg-[#EBF2FF] px-2 py-0.5 text-[10px] font-bold text-[#1E40AF]">
-                                                    Terjadwal
-                                                </span>
+                                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                                                    {isReplaced ? (
+                                                        <span className="rounded-lg bg-[#E6F5EE] px-3 py-1.5 text-xs font-bold text-[#0E7452]">
+                                                            ✓ Selesai Dialihkan
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleGenerateKode(sesi)}
+                                                            disabled={generatingSesi === sesi.id}
+                                                            className="rounded-lg bg-[#0F382A] hover:bg-[#164B38] text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818" />
+                                                            </svg>
+                                                            {generatingSesi === sesi.id ? 'Membuat...' : (sesi.active_kode ? 'Lihat/Buat Ulang Kode' : 'Generate Kode Piket')}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className="mt-0.5 text-[11px] text-slate-500">
-                                                10:30 - 12:00 WIB • Ruang 12, Gedung B Lantai 2 • 32 Siswa
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="hidden sm:flex items-center gap-2 shrink-0">
-                                        <span className="rounded-lg bg-[#F6F9F8] px-2.5 py-1.5 text-[10.5px] font-semibold text-slate-500 text-center leading-tight">
-                                            Menunggu<br />Sesi
-                                        </span>
-                                        <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-                                        </svg>
-                                    </div>
-                                </div>
+                                        );
+                                    })
+                                )}
                             </div>
 
                             {/* Exact Dapodik Integration & Cetak Jadwal Footer */}
@@ -720,16 +806,21 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                 </div>
             </div>
 
-            {/* Koordinasi Guru Piket Hari Ini Modal */}
+            {/* Modal Koordinasi Guru Piket Hari Ini */}
             <Modal show={showPiketModal} onClose={() => setShowPiketModal(false)} maxWidth="md">
                 <div className="p-6">
                     <div className="flex items-center justify-between pb-3 border-b border-[#EDF2F0]">
                         <div>
-                            <h3 className="font-serif text-lg font-bold text-slate-900">
-                                Koordinasi Guru Piket Hari Ini
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Hubungi Guru Piket via WhatsApp untuk penggantian sesi & kode unik 6-digit.
+                            <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F5EE] text-[#0E7452]">
+                                    Hari Ini
+                                </span>
+                                <h3 className="font-serif text-lg font-bold text-slate-900">
+                                    Daftar Guru Piket Bertugas
+                                </h3>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Jika berhalangan mengajar, koordinasikan via WhatsApp lalu buat kode unik 6 digit untuk sesi Anda.
                             </p>
                         </div>
                         <button
@@ -741,41 +832,168 @@ export default function Dashboard({ piketHariIni = [], tahunAjaranAktif = null }
                         </button>
                     </div>
 
-                    <div className="mt-4 space-y-2.5">
+                    <div className="mt-4 space-y-3">
                         {piketHariIni.length === 0 ? (
-                            <p className="rounded-xl bg-[#F6F9F8] p-4 text-center text-xs text-slate-500">
-                                Belum ada akun Guru Piket aktif terdaftar.
-                            </p>
+                            <div className="rounded-xl bg-[#F6F9F8] border border-dashed border-[#DCE6E1] p-6 text-center">
+                                <svg className="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="text-xs font-semibold text-slate-700">
+                                    Belum ada guru piket yang terjadwal untuk hari ini.
+                                </p>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Silakan hubungi pihak Tata Usaha / Admin sekolah secara langsung.
+                                </p>
+                            </div>
                         ) : (
-                            piketHariIni.map((piket) => (
-                                <div
-                                    key={piket.id}
-                                    className="flex items-center justify-between gap-3 rounded-xl border border-[#E5ECE9] bg-[#F8FAF9] p-3"
-                                >
-                                    <div className="min-w-0">
-                                        <p className="truncate text-xs font-bold text-slate-900">
-                                            {piket.nama}
-                                        </p>
-                                        <p className="truncate font-mono text-[11px] text-slate-500">
-                                            {piket.no_wa || 'No. WA belum diatur'}
-                                        </p>
+                            piketHariIni.map((piket) => {
+                                const waNumber = piket.wa_phone || (piket.no_wa ? piket.no_wa.replace(/[^0-9]/g, '').replace(/^0/, '62') : '');
+                                const messageTemplate = encodeURIComponent(
+                                    `Halo Bapak/Ibu ${piket.nama}, mohon maaf mengganggu. Saya ${user.nama} (Guru SMPN Soreang) berhalangan hadir untuk sesi mengajar hari ini. Mohon bantuan koordinasi piket untuk pembagian sesi. Terima kasih.`
+                                );
+                                const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${messageTemplate}` : null;
+
+                                return (
+                                    <div
+                                        key={piket.id}
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[#E5ECE9] bg-[#F8FAF9] p-3.5 hover:border-[#34D399] transition"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="truncate text-xs font-bold text-slate-900">
+                                                    {piket.nama}
+                                                </p>
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F5EE] px-2 py-0.5 text-[9px] font-bold text-[#0E7452]">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
+                                                    Piket Aktif
+                                                </span>
+                                            </div>
+                                            <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500 flex items-center gap-1">
+                                                <svg className="w-3.5 h-3.5 text-[#0E7452]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                </svg>
+                                                {piket.no_wa || 'No. WA belum terisi'}
+                                            </p>
+                                        </div>
+
+                                        {waUrl ? (
+                                            <a
+                                                href={waUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#046C4E] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0D3124] transition shrink-0 shadow-xs"
+                                            >
+                                                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                                                </svg>
+                                                Hubungi via WA
+                                            </a>
+                                        ) : (
+                                            <span className="text-[11px] font-semibold text-slate-400 italic">
+                                                WA tidak tersedia
+                                            </span>
+                                        )}
                                     </div>
-                                    {piket.no_wa && (
-                                        <a
-                                            href={`https://wa.me/${piket.no_wa}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="rounded-lg bg-[#046C4E] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0D3124] transition shrink-0"
-                                        >
-                                            Hubungi WA
-                                        </a>
-                                    )}
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
             </Modal>
+
+            {/* Modal Kode Pengganti Dibuat (6-Digit Numerik) */}
+            <Modal show={!!activeKodeModal} onClose={() => setActiveKodeModal(null)} maxWidth="sm">
+                <div className="p-6 text-center space-y-4">
+                    <div className="flex justify-between items-center pb-2 border-b border-[#EDF2F0]">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#0E7452]">
+                            KODE UNIK PENGGANTIAN
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setActiveKodeModal(null)}
+                            className="text-slate-400 hover:text-slate-600 text-sm"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <div>
+                        <h3 className="text-base font-bold text-slate-900">
+                            Kode Pengganti Berhasil Dibuat
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Berikan 6-digit kode ini kepada Guru Piket untuk membuka sesi dan mengabsen siswa.
+                        </p>
+                    </div>
+
+                    {/* Display Kode Besar */}
+                    <div className="py-4 bg-[#F8FAF9] rounded-2xl border-2 border-dashed border-[#0E7452]/40">
+                        <span className="font-mono text-4xl font-extrabold tracking-[0.35em] text-[#0D3124]">
+                            {activeKodeModal?.kode}
+                        </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                        Sisa masa berlaku:{' '}
+                        <strong className="text-[#0E7452]">
+                            {getRemainingTime(activeKodeModal?.berlaku_sampai)}
+                        </strong>{' '}
+                        (sampai jam pelajaran sesi selesai).
+                    </p>
+
+                    <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
+                        <button
+                            type="button"
+                            onClick={() => handleCopyKode(activeKodeModal?.kode)}
+                            className="rounded-xl bg-[#0F382A] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#164B38] transition flex items-center justify-center gap-1.5 shadow-xs"
+                        >
+                            <svg className="w-4 h-4 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                            </svg>
+                            {copied ? 'Tersalin ke Clipboard!' : 'Salin 6-Digit Kode'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveKodeModal(null);
+                                setShowPiketModal(true);
+                            }}
+                            className="rounded-xl border border-[#DCE5E1] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-[#F6F9F8] transition"
+                        >
+                            Hubungi Piket via WA
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Toast Notifikasi Berhasil Digantikan Guru Piket */}
+            {replacementToast && (
+                <div className="fixed bottom-6 right-6 z-50 max-w-sm bg-[#002114] border-2 border-[#82F5C1] text-white p-4 rounded-[16px] shadow-lg animate-bounce sm:animate-none">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#82F5C1] text-[#002114]">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-bold text-[#82F5C1] uppercase tracking-wider">
+                                Sesi Berhasil Digantikan!
+                            </h4>
+                            <p className="text-xs text-white mt-0.5 leading-snug">
+                                Sesi <strong>{replacementToast.mapel}</strong> ({replacementToast.kelas}) telah dibuka & diambil alih oleh{' '}
+                                <strong className="text-[#82F5C1]">{replacementToast.piketNama}</strong>.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setReplacementToast(null)}
+                            className="text-white/60 hover:text-white text-xs p-1"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

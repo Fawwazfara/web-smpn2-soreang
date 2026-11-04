@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\BeritaController;
+use App\Http\Controllers\Admin\GuruPiketController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\KelasController;
+use App\Http\Controllers\KodePenggantiController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MapelController;
 use App\Http\Controllers\ProfileController;
@@ -23,6 +25,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::post('/sesi/{sesi}/generate-kode', [KodePenggantiController::class, 'generate'])->name('sesi.generate-kode');
+    Route::post('/piket/klaim-kode', [KodePenggantiController::class, 'klaim'])->name('piket.klaim-kode');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -68,6 +73,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::patch('/admin/berita/{berita}', [BeritaController::class, 'update']);
     Route::patch('/admin/berita/{berita}/toggle-pin', [BeritaController::class, 'togglePin'])->name('admin.berita.toggle-pin');
     Route::delete('/admin/berita/{berita}', [BeritaController::class, 'destroy'])->name('admin.berita.destroy');
+
+    Route::get('/admin/guru-piket', [GuruPiketController::class, 'index'])->name('admin.guru-piket.index');
+    Route::post('/admin/guru-piket', [GuruPiketController::class, 'store'])->name('admin.guru-piket.store');
+    Route::delete('/admin/guru-piket/{guruPiket}', [GuruPiketController::class, 'destroy'])->name('admin.guru-piket.destroy');
 });
 
 require __DIR__.'/auth.php';
