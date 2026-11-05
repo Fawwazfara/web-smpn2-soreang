@@ -1,8 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
-export default function Dashboard({ stats = {}, kelasList = [] }) {
+export default function Dashboard({
+    stats = {},
+    kelasList = [],
+    absenHariIni = null,
+    aturanJam = {},
+}) {
     const user = usePage().props.auth.user;
     const [kodeInput, setKodeInput] = useState('');
     const [inputMsg, setInputMsg] = useState(null);
@@ -209,10 +214,10 @@ export default function Dashboard({ stats = {}, kelasList = [] }) {
                         </div>
 
                         {/* Presensi Harian Guru Piket (PRD Bagian 6: Guru Piket juga wajib absen harian) */}
-                        <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs">
-                            <div className="flex items-center justify-between">
+                        <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs space-y-3.5">
+                            <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6F5EE] text-[#0E7452]">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E6F5EE] text-[#0E7452]">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                                         </svg>
@@ -222,14 +227,49 @@ export default function Dashboard({ stats = {}, kelasList = [] }) {
                                             Presensi Harian Petugas Piket
                                         </h3>
                                         <p className="text-[11px] text-slate-500">
-                                            Wajib selfie kamera live setiap hari kerja
+                                            {absenHariIni
+                                                ? `Masuk: ${absenHariIni.jam_masuk}${
+                                                      absenHariIni.jam_pulang
+                                                          ? ` • Pulang: ${absenHariIni.jam_pulang}`
+                                                          : ''
+                                                  }`
+                                                : `Batas tepat waktu ${aturanJam.batas_tepat_waktu || '07:15'} WIB`}
                                         </p>
                                     </div>
                                 </div>
-                                <span className="rounded-md bg-[#FEECEC] px-2 py-0.5 text-[10px] font-bold text-[#DC2626]">
-                                    Standby
-                                </span>
+                                {absenHariIni ? (
+                                    <span
+                                        className={`rounded-md px-2.5 py-0.5 text-[10px] font-bold shrink-0 ${
+                                            absenHariIni.status === 'tepat waktu'
+                                                ? 'bg-[#E6F5EE] text-[#0E7452]'
+                                                : 'bg-[#FEF3E2] text-[#B45309]'
+                                        }`}
+                                    >
+                                        {absenHariIni.status === 'tepat waktu'
+                                            ? 'Tepat Waktu'
+                                            : 'Terlambat'}
+                                    </span>
+                                ) : (
+                                    <span className="rounded-md bg-[#FEECEC] px-2.5 py-0.5 text-[10px] font-bold text-[#DC2626] shrink-0">
+                                        Belum Absen
+                                    </span>
+                                )}
                             </div>
+
+                            <Link
+                                href={route('absen-harian.index')}
+                                className={`w-full rounded-xl py-2.5 px-4 text-xs font-bold transition flex items-center justify-center gap-2 ${
+                                    absenHariIni
+                                        ? 'border border-[#CBE9DA] bg-[#F4F9F6] text-[#0E7452] hover:bg-[#E6F5EE]'
+                                        : 'bg-[#0F382A] text-white hover:bg-[#164B38] shadow-xs'
+                                }`}
+                            >
+                                {absenHariIni?.jam_pulang
+                                    ? 'Lihat Riwayat Presensi Mandiri'
+                                    : absenHariIni
+                                      ? 'Buka Presensi Mandiri / Mode Pulang'
+                                      : 'Buka Kamera & Absen Masuk Sekarang'}
+                            </Link>
                         </div>
                     </div>
 
