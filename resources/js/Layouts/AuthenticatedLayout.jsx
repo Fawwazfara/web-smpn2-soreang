@@ -255,10 +255,13 @@ export default function AuthenticatedLayout({ header, children }) {
         if (item.route === 'dashboard') {
             return route().current('dashboard');
         }
-        if (item.route === 'admin.berita.index') {
-            return route().current('admin.berita.*');
+        // For namespaced routes (e.g. admin.siswa.index, admin.berita.index),
+        // match against the full namespace prefix to avoid false positives.
+        const parts = item.route.split('.');
+        if (parts.length >= 3) {
+            return route().current(`${parts[0]}.${parts[1]}.*`);
         }
-        return route().current(`${item.route.split('.')[0]}.*`);
+        return route().current(`${parts[0]}.*`);
     };
 
     const roleSubtitle =

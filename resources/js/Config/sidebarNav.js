@@ -26,10 +26,10 @@ export const SIDEBAR_NAV = {
         {
             title: 'MASTER DATA',
             items: [
-                { label: 'Data Siswa', route: null, icon: 'users-group' },
+                { label: 'Data Siswa', route: 'admin.siswa.index', icon: 'users-group' },
                 { label: 'Data Guru & Staff', route: 'users.index', icon: 'id-card' },
                 { label: 'Kelas & Rombel', route: 'kelas.index', icon: 'door-room' },
-                { label: 'Mata Pelajaran', route: null, icon: 'open-book' },
+                { label: 'Mata Pelajaran', route: 'mapel.index', icon: 'open-book' },
             ],
         },
         {
@@ -97,7 +97,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'ATTENDANCE',
             items: [
-                { label: 'Presensi Guru (Geofence)', route: null, icon: 'map-pin' },
+                { label: 'Presensi Guru', route: null, icon: 'map-pin' },
                 { label: 'Presensi Siswa', route: null, icon: 'checklist' },
                 { label: 'Rekap & Laporan', route: null, icon: 'doc-fold' },
             ],
