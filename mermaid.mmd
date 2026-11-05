@@ -27,6 +27,8 @@ erDiagram
         string jenis_pegawai "guru atau tenaga_kependidikan (untuk role guru)"
         boolean wajib_ganti_password
         boolean aktif
+        text face_descriptor "vektor biometrik wajah 128-D JSON, boleh kosong"
+        datetime face_registered_at "waktu pendaftaran wajah pertama kali, boleh kosong"
     }
 
     GURU_PIKET {

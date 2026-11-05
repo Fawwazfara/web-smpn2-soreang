@@ -26,6 +26,32 @@ class AbsenHarianTest extends TestCase
         return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
     }
 
+    /**
+     * @return array<int, float>
+     */
+    protected function sampleFaceDescriptor(float $phase = 0.25): array
+    {
+        $vector = [];
+        for ($i = 0; $i < 128; $i++) {
+            $vector[] = round(sin(($i * 0.17) + $phase) * 0.18, 6);
+        }
+
+        return $vector;
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    protected function differentFaceDescriptor(): array
+    {
+        $vector = [];
+        for ($i = 0; $i < 128; $i++) {
+            $vector[] = round(cos(($i * 0.31) + 2.4) * 0.22, 6);
+        }
+
+        return $vector;
+    }
+
     public function test_guru_can_view_absen_harian_page(): void
     {
         $guru = User::factory()->create([
@@ -54,6 +80,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => now()->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ];
 
         $this->actingAs($admin)->get(route('absen-harian.index'))->assertForbidden();
@@ -81,6 +108,7 @@ class AbsenHarianTest extends TestCase
                     'foto_capture' => $this->validLiveCaptureDataUri(),
                     'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
                     'sumber' => 'live',
+                    'face_descriptor' => $this->sampleFaceDescriptor(),
                     'latitude' => -7.02614,
                     'longitude' => 107.51928,
                 ]);
@@ -112,6 +140,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ])->assertRedirect(route('absen-harian.index'));
 
         $this->assertDatabaseHas('absen_harian', [
@@ -124,6 +153,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ])->assertRedirect(route('absen-harian.index'));
 
         $this->assertDatabaseHas('absen_harian', [
@@ -143,6 +173,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ];
 
         $this->actingAs($guru)->post(route('absen-harian.store'), $payload)
@@ -167,6 +198,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ]);
         $fileUploadResponse->assertSessionHasErrors('foto_capture');
 
@@ -175,6 +207,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'galeri',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ]);
         $nonLiveResponse->assertSessionHasErrors('sumber');
 
@@ -183,6 +216,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->subMinutes(20)->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ]);
         $staleResponse->assertSessionHasErrors('waktu_ambil');
 
@@ -200,6 +234,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ])->assertRedirect(route('absen-harian.index'));
 
         // Coba absen pulang sebelum 14:30 WIB -> ditolak
@@ -208,6 +243,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ]);
         $earlyPulang->assertSessionHasErrors('absen');
 
@@ -220,6 +256,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ]);
         $validPulang->assertRedirect(route('absen-harian.index'));
 
@@ -240,6 +277,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ]);
         $duplicatePulang->assertSessionHasErrors('absen');
     }
@@ -257,6 +295,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
         ]);
 
         $absen = AbsenHarian::where('user_id', $owner->id)->firstOrFail();
@@ -281,6 +320,7 @@ class AbsenHarianTest extends TestCase
             'foto_capture' => $this->validLiveCaptureDataUri(),
             'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
             'sumber' => 'live',
+            'face_descriptor' => $this->sampleFaceDescriptor(),
             'redirect_to' => 'dashboard',
         ])->assertRedirect(route('dashboard'));
 
@@ -294,6 +334,7 @@ class AbsenHarianTest extends TestCase
                     ->where('ringkasan.total_hadir', 1)
                     ->where('ringkasan.tepat_waktu', 1)
                     ->where('ringkasan.belum_absen', 2)
+                    ->where('ringkasan.wajah_terdaftar', 1)
                 );
         }
 
@@ -339,6 +380,7 @@ class AbsenHarianTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Guru/Dashboard')
                 ->where('absenHariIni.status', 'tepat waktu')
+                ->where('faceProfile.registered', true)
                 ->has('logPekanIni', 3)
             );
 
@@ -349,5 +391,82 @@ class AbsenHarianTest extends TestCase
                 ->component('Piket/Dashboard')
                 ->where('absenHariIni', null)
             );
+    }
+
+    public function test_face_recognition_one_to_one_verification_and_admin_only_reset(): void
+    {
+        Storage::fake('public');
+        Carbon::setTestNow(Carbon::create(2026, 10, 30, 6, 40, 0, 'Asia/Jakarta'));
+
+        $guru = User::factory()->create(['role' => 'guru', 'jenis_pegawai' => 'guru']);
+        $admin = User::factory()->admin()->create();
+        $kepsek = User::factory()->create(['role' => 'kepsek']);
+
+        // 1. Pendaftaran wajah pertama via endpoint standalone
+        $ownerDescriptor = $this->sampleFaceDescriptor(0.35);
+        $this->actingAs($guru)
+            ->post(route('absen-harian.enroll-face'), [
+                'sumber' => 'live',
+                'face_descriptor' => $ownerDescriptor,
+            ])
+            ->assertRedirect(route('absen-harian.index'));
+
+        $guru->refresh();
+        $this->assertNotNull($guru->face_descriptor);
+        $this->assertCount(128, $guru->face_descriptor);
+        $this->assertNotNull($guru->face_registered_at);
+
+        // Raw face_descriptor wajib disembunyikan dari serialisasi User
+        $this->assertArrayNotHasKey('face_descriptor', $guru->toArray());
+
+        // 2. Pegawai tidak boleh menimpa/mendaftarkan ulang wajahnya sendiri setelah terkunci
+        $this->actingAs($guru)
+            ->post(route('absen-harian.enroll-face'), [
+                'sumber' => 'live',
+                'face_descriptor' => $this->differentFaceDescriptor(),
+            ])
+            ->assertSessionHasErrors('absen');
+
+        // 3. Absen masuk dengan wajah orang lain (distance > 0.55) wajib ditolak
+        $this->actingAs($guru)
+            ->post(route('absen-harian.store'), [
+                'foto_capture' => $this->validLiveCaptureDataUri(),
+                'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
+                'sumber' => 'live',
+                'face_descriptor' => $this->differentFaceDescriptor(),
+            ])
+            ->assertSessionHasErrors('absen');
+
+        $this->assertSame(0, AbsenHarian::where('user_id', $guru->id)->count());
+
+        // 4. Absen masuk dengan wajah pemilik akun yang cocok (sedikit variasi <= 0.55) berhasil
+        $slightlyVariedDescriptor = $this->sampleFaceDescriptor(0.37);
+        $this->actingAs($guru)
+            ->post(route('absen-harian.store'), [
+                'foto_capture' => $this->validLiveCaptureDataUri(),
+                'waktu_ambil' => Carbon::now('UTC')->toIso8601String(),
+                'sumber' => 'live',
+                'face_descriptor' => $slightlyVariedDescriptor,
+            ])
+            ->assertRedirect(route('absen-harian.index'));
+
+        $this->assertSame(1, AbsenHarian::where('user_id', $guru->id)->count());
+
+        // 5. Kepsek dan Guru tidak boleh mereset wajah (403 Forbidden), hanya Admin yang boleh
+        $this->actingAs($kepsek)
+            ->delete(route('absen-harian.reset-face', $guru))
+            ->assertForbidden();
+
+        $this->actingAs($guru)
+            ->delete(route('absen-harian.reset-face', $guru))
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->delete(route('absen-harian.reset-face', $guru))
+            ->assertRedirect(route('absen-harian.rekap'));
+
+        $guru->refresh();
+        $this->assertNull($guru->face_descriptor);
+        $this->assertNull($guru->face_registered_at);
     }
 }

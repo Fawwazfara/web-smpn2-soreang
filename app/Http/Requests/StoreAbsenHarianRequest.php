@@ -14,6 +14,11 @@ class StoreAbsenHarianRequest extends FormRequest
      */
     protected ?array $decodedImage = null;
 
+    /**
+     * @var array<int, float>|null
+     */
+    protected ?array $cleanDescriptor = null;
+
     public function authorize(): bool
     {
         $user = $this->user();
@@ -26,10 +31,14 @@ class StoreAbsenHarianRequest extends FormRequest
      */
     public function rules(): array
     {
+        $descriptorLength = (int) config('absensi.face_recognition.descriptor_length', 128);
+
         return [
             'foto_capture' => ['required', 'string'],
             'waktu_ambil' => ['required', 'date'],
             'sumber' => ['required', 'string', Rule::in(['live'])],
+            'face_descriptor' => ['required', 'array', 'size:'.$descriptorLength],
+            'face_descriptor.*' => ['required', 'numeric', 'between:-5,5'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'akurasi_meter' => ['nullable', 'numeric', 'min:0', 'max:100000'],
@@ -50,6 +59,9 @@ class StoreAbsenHarianRequest extends FormRequest
             'waktu_ambil.date' => 'Format waktu pengambilan foto tidak valid.',
             'sumber.required' => 'Sumber foto wajib berasal dari kamera live.',
             'sumber.in' => 'Sumber foto tidak valid. Upload galeri atau file eksternal ditolak.',
+            'face_descriptor.required' => 'Wajah tidak terdeteksi oleh sensor Face Recognition. Pastikan wajah terlihat jelas menghadap kamera.',
+            'face_descriptor.array' => 'Format data biometrik wajah tidak valid.',
+            'face_descriptor.size' => 'Vektor biometrik wajah tidak lengkap (wajib 128 dimensi).',
         ];
     }
 
@@ -67,6 +79,30 @@ class StoreAbsenHarianRequest extends FormRequest
                 }
 
                 if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $rawDescriptor = $this->input('face_descriptor', []);
+                $vector = [];
+                $sumSquares = 0.0;
+
+                foreach ($rawDescriptor as $val) {
+                    $f = (float) $val;
+                    if (! is_finite($f)) {
+                        $validator->errors()->add('face_descriptor', 'Nilai vektor biometrik wajah tidak valid.');
+
+                        return;
+                    }
+                    $vector[] = round($f, 6);
+                    $sumSquares += $f * $f;
+                }
+
+                if (sqrt($sumSquares) < 0.05) {
+                    $validator->errors()->add(
+                        'face_descriptor',
+                        'Data biometrik wajah kosong atau tidak terbaca dengan jelas.'
+                    );
+
                     return;
                 }
 
@@ -134,6 +170,7 @@ class StoreAbsenHarianRequest extends FormRequest
                     return;
                 }
 
+                $this->cleanDescriptor = $vector;
                 $this->decodedImage = [
                     'binary' => $binary,
                     'extension' => $allowedMimes[$imageInfo['mime']],
@@ -153,5 +190,13 @@ class StoreAbsenHarianRequest extends FormRequest
             'extension' => 'jpg',
             'mime' => 'image/jpeg',
         ];
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    public function validatedFaceDescriptor(): array
+    {
+        return $this->cleanDescriptor ?? [];
     }
 }

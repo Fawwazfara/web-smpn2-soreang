@@ -7,6 +7,10 @@ return [
     'toleransi_menit' => (int) env('ABSENSI_TOLERANSI_MENIT', 15),
     'jam_pulang' => env('ABSENSI_JAM_PULANG', '14:30'),
     'max_capture_age_seconds' => (int) env('ABSENSI_MAX_CAPTURE_AGE', 300),
+    'face_recognition' => [
+        'threshold' => (float) env('ABSENSI_FACE_THRESHOLD', 0.55),
+        'descriptor_length' => 128,
+    ],
     'sekolah' => [
         'nama' => 'SMPN 2 Soreang',
         'latitude' => -7.02614,

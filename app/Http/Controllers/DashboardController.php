@@ -194,6 +194,7 @@ class DashboardController extends Controller
             'aturanJam' => $aturanJam,
             'logPekanIni' => $this->buildLogPekanIni($user->id, $now, $tz),
             'ringkasanBulanIni' => $this->buildRingkasanBulanIni($user->id, $now, $tz),
+            'faceProfile' => AbsenHarianController::buildFaceProfile($user, $tz),
             'flashStatus' => session('status'),
         ]);
     }

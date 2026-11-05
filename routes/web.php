@@ -32,6 +32,7 @@ Route::middleware(['auth', 'role:guru,guru_piket'])->group(function () {
     Route::get('/absen-harian', [AbsenHarianController::class, 'index'])->name('absen-harian.index');
     Route::post('/absen-harian', [AbsenHarianController::class, 'store'])->name('absen-harian.store');
     Route::post('/absen-harian/pulang', [AbsenHarianController::class, 'pulang'])->name('absen-harian.pulang');
+    Route::post('/absen-harian/daftar-wajah', [AbsenHarianController::class, 'enrollFace'])->name('absen-harian.enroll-face');
 });
 
 Route::middleware(['auth', 'role:admin,kepsek'])->group(function () {
@@ -39,6 +40,7 @@ Route::middleware(['auth', 'role:admin,kepsek'])->group(function () {
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
+    Route::delete('/rekap-absen-harian/{user}/reset-wajah', [AbsenHarianController::class, 'resetFace'])->name('absen-harian.reset-face');
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');

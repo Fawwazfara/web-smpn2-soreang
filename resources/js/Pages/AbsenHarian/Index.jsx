@@ -1,4 +1,5 @@
 import Modal from '@/Components/Modal';
+import { useFaceRecognition } from '@/Hooks/useFaceRecognition';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,6 +23,7 @@ export default function Index({
     agendaHariIni = [],
     infoPiketHariIni = {},
     pilihanBulan = [],
+    faceProfile = { registered: false, registered_at_label: null, descriptor: null, threshold: 0.55 },
     flashStatus = null,
 }) {
     const { auth, tahunAjaranAktif, errors = {} } = usePage().props;
@@ -63,7 +65,17 @@ export default function Index({
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const overlayCanvasRef = useRef(null);
     const streamRef = useRef(null);
+
+    const { modelsReady, modelsLoading, modelError, faceState, latestDescriptorRef } =
+        useFaceRecognition({
+            videoRef,
+            overlayCanvasRef,
+            active: cameraReady && !capturedPreview,
+            faceProfile,
+            userName: user.nama,
+        });
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -136,7 +148,10 @@ export default function Index({
     }, []);
 
     useEffect(() => {
-        const needsCamera = !absenHariIni || (absenHariIni && !absenHariIni.jam_pulang);
+        const needsCamera =
+            !absenHariIni ||
+            (absenHariIni && !absenHariIni.jam_pulang) ||
+            !faceProfile?.registered;
         if (needsCamera) {
             startCamera();
         }
@@ -144,7 +159,7 @@ export default function Index({
         return () => {
             stopCamera();
         };
-    }, [absenHariIni, startCamera, stopCamera]);
+    }, [absenHariIni, faceProfile?.registered, startCamera, stopCamera]);
 
     useEffect(() => {
         if (videoRef.current && streamRef.current && videoRef.current.srcObject !== streamRef.current) {
@@ -236,6 +251,63 @@ export default function Index({
         return nowMinutes >= pH * 60 + pM;
     }, [absenHariIni, aturanJam.jam_pulang, wibClockParts.hh, wibClockParts.mm]);
 
+    const handleEnrollFaceOnly = async () => {
+        setCameraError(null);
+
+        if (!cameraReady || !streamRef.current || !videoRef.current) {
+            const started = await startCamera();
+            if (!started) return;
+            setCameraError(
+                'Kamera live telah aktif. Posisikan wajah menghadap kamera hingga bingkai deteksi muncul, lalu klik kembali.'
+            );
+            return;
+        }
+
+        if (modelError) {
+            setCameraError(modelError);
+            return;
+        }
+
+        if (modelsLoading || !modelsReady) {
+            setCameraError('Model Face Recognition sedang disiapkan, mohon tunggu sebentar...');
+            return;
+        }
+
+        if (faceState.status === 'multiple_faces') {
+            setCameraError(
+                'Terdeteksi lebih dari 1 wajah. Pastikan hanya wajah Anda yang berada di depan kamera.'
+            );
+            return;
+        }
+
+        const descriptor = latestDescriptorRef.current;
+        if (!Array.isArray(descriptor) || descriptor.length !== 128) {
+            setCameraError(
+                'Wajah belum terdeteksi dengan jelas oleh sensor biometrik. Arahkan wajah lurus ke kamera.'
+            );
+            return;
+        }
+
+        setSubmittingMode('enroll');
+        router.post(
+            route('absen-harian.enroll-face'),
+            {
+                sumber: 'live',
+                face_descriptor: descriptor,
+                redirect_to: 'index',
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setSubmittingMode(null);
+                },
+                onError: () => {
+                    setSubmittingMode(null);
+                },
+            }
+        );
+    };
+
     const captureAndSubmit = async (mode) => {
         setCameraError(null);
 
@@ -244,6 +316,38 @@ export default function Index({
             if (!started) return;
             setCameraError(
                 'Kamera live telah aktif. Posisikan wajah menghadap kamera lalu klik tombol sekali lagi untuk mengambil foto.'
+            );
+            return;
+        }
+
+        if (modelError) {
+            setCameraError(modelError);
+            return;
+        }
+
+        if (modelsLoading || !modelsReady) {
+            setCameraError('Model Face Recognition sedang dimuat, tunggu 1–2 detik lalu tekan kembali.');
+            return;
+        }
+
+        if (faceState.status === 'mismatch') {
+            setCameraError(
+                'Verifikasi Face Recognition ditolak: Wajah di depan kamera tidak cocok dengan data biometrik pemilik akun ini.'
+            );
+            return;
+        }
+
+        if (faceState.status === 'multiple_faces') {
+            setCameraError(
+                'Terdeteksi lebih dari 1 wajah. Pastikan hanya wajah Anda yang berada di depan kamera.'
+            );
+            return;
+        }
+
+        const descriptor = latestDescriptorRef.current;
+        if (!Array.isArray(descriptor) || descriptor.length !== 128) {
+            setCameraError(
+                'Wajah belum terdeteksi dengan jelas oleh sensor Face Recognition. Posisikan 1 wajah menghadap kamera.'
             );
             return;
         }
@@ -289,6 +393,7 @@ export default function Index({
             foto_capture: dataUrl,
             waktu_ambil: waktuAmbilIso,
             sumber: 'live',
+            face_descriptor: descriptor,
         };
 
         if (geoState.detected) {
@@ -377,7 +482,13 @@ export default function Index({
 
     const withinRadius = geoState.distance <= (sekolah.radius_meter || 50);
     const serverErrorMsg =
-        errors.absen || errors.foto_capture || errors.waktu_ambil || errors.sumber || null;
+        errors.absen ||
+        errors.face_descriptor ||
+        errors.foto_capture ||
+        errors.waktu_ambil ||
+        errors.sumber ||
+        modelError ||
+        null;
 
     return (
         <AuthenticatedLayout>
@@ -533,12 +644,24 @@ export default function Index({
                                 </h2>
                             </div>
 
-                            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#E5ECE9] bg-[#F6F9F8] px-3 py-1 text-[11px] font-semibold text-slate-600 max-w-full">
-                                <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-                                </svg>
-                                <span className="truncate max-w-[230px]">{cameraLabel}</span>
+                            <div className="flex flex-wrap items-center gap-2 max-w-full">
+                                {absenHariIni?.foto_url && (
+                                    <button
+                                        type="button"
+                                        onClick={cameraReady ? stopCamera : startCamera}
+                                        disabled={cameraLoading}
+                                        className="inline-flex items-center gap-1.5 rounded-full border border-[#CBE9DA] bg-[#E6F5EE] px-3 py-1 text-[11px] font-bold text-[#0E7452] hover:bg-[#D7EFE4] transition"
+                                    >
+                                        {cameraReady ? 'Tutup Kamera Live' : 'Buka Kamera Live'}
+                                    </button>
+                                )}
+                                <div className="inline-flex items-center gap-1.5 rounded-full border border-[#E5ECE9] bg-[#F6F9F8] px-3 py-1 text-[11px] font-semibold text-slate-600 max-w-full">
+                                    <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                                    </svg>
+                                    <span className="truncate max-w-[230px]">{cameraLabel}</span>
+                                </div>
                             </div>
                         </div>
 
@@ -554,6 +677,14 @@ export default function Index({
                                 muted
                                 className={`h-full w-full object-cover scale-x-[-1] transition-opacity duration-200 ${
                                     cameraReady && !capturedPreview ? 'opacity-100' : 'opacity-0 pointer-events-none absolute inset-0'
+                                }`}
+                            />
+
+                            {/* Real-Time Face Tracking Bracket Box Overlay */}
+                            <canvas
+                                ref={overlayCanvasRef}
+                                className={`pointer-events-none absolute inset-0 z-10 h-full w-full transition-opacity duration-150 ${
+                                    cameraReady && !capturedPreview ? 'opacity-100' : 'opacity-0'
                                 }`}
                             />
 
@@ -594,7 +725,7 @@ export default function Index({
                             )}
 
                             {/* Clean Location-Only Overlay */}
-                            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex items-center gap-2.5 rounded-xl border border-white/15 bg-[#0A241B]/80 px-3.5 py-2 text-white backdrop-blur-xs">
+                            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-center gap-2.5 rounded-xl border border-white/15 bg-[#0A241B]/80 px-3.5 py-2 text-white backdrop-blur-xs">
                                 <svg className="w-4 h-4 text-[#6EE7B7] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 19.5s6-5.25 6-10.125a6 6 0 10-12 0C6 14.25 12 19.5 12 19.5z" />
@@ -604,6 +735,67 @@ export default function Index({
                                 </span>
                             </div>
                         </div>
+
+                        {/* Biometric Face Recognition Status Strip */}
+                        <div className="mt-3.5 rounded-xl border border-[#E5ECE9] bg-[#F8FBF9] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-extrabold ${
+                                        faceProfile?.registered
+                                            ? 'bg-[#E3F5EC] text-[#0E7452]'
+                                            : 'bg-[#FEF3E2] text-[#B45309]'
+                                    }`}
+                                >
+                                    {faceProfile?.registered
+                                        ? '🔒 Face ID Terdaftar & Terkunci'
+                                        : '◉ Wajah Belum Terdaftar'}
+                                </span>
+                                {faceProfile?.registered_at_label && (
+                                    <span className="hidden sm:inline text-[11px] text-slate-500 truncate">
+                                        ({faceProfile.registered_at_label})
+                                    </span>
+                                )}
+                            </div>
+
+                            {cameraReady && !capturedPreview && (
+                                <span
+                                    className={`text-[11px] font-bold ${
+                                        modelsLoading
+                                            ? 'text-slate-500'
+                                            : faceState.status === 'matched' ||
+                                                faceState.status === 'ready_enroll'
+                                              ? 'text-[#0E7452]'
+                                              : faceState.status === 'mismatch'
+                                                ? 'text-[#DC2626]'
+                                                : faceState.status === 'multiple_faces'
+                                                  ? 'text-[#B45309]'
+                                                  : 'text-slate-600'
+                                    }`}
+                                >
+                                    {modelsLoading
+                                        ? 'Memuat model Face Recognition...'
+                                        : faceState.label}
+                                </span>
+                            )}
+                        </div>
+
+                        {!faceProfile?.registered && absenHariIni && (
+                            <div className="mt-3 rounded-xl border border-[#CBE9DA] bg-[#EFF8F4] p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                                <p className="text-[11.5px] font-medium text-[#0F382A]">
+                                    Akun Anda belum memiliki kunci biometrik wajah. Arahkan wajah ke kamera live lalu daftarkan sekarang.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={handleEnrollFaceOnly}
+                                    disabled={submittingMode !== null}
+                                    className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0E7452] px-3.5 py-2 text-xs font-extrabold text-white hover:bg-[#0A5D41] disabled:opacity-60 transition"
+                                >
+                                    {submittingMode === 'enroll'
+                                        ? 'Mendaftarkan Wajah...'
+                                        : 'Daftarkan & Kunci Wajah Saya'}
+                                </button>
+                            </div>
+                        )}
 
                         {/* Feedback Alerts */}
                         {flashStatus && (
@@ -639,7 +831,9 @@ export default function Index({
                                         <span className="text-xs sm:text-[13px] font-bold leading-snug">
                                             {submittingMode === 'masuk'
                                                 ? 'Menyimpan Presensi Masuk...'
-                                                : 'Ambil Foto & Absen Masuk Sekarang'}
+                                                : faceProfile?.registered
+                                                  ? 'Ambil Foto & Absen Masuk Sekarang'
+                                                  : 'Daftarkan Wajah & Absen Masuk'}
                                         </span>
                                     </div>
                                     <div className="shrink-0 rounded-xl bg-[#1F5C44] px-2.5 py-1.5 text-center leading-tight">

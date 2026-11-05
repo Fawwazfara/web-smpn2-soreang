@@ -1,4 +1,5 @@
 import Modal from '@/Components/Modal';
+import { useFaceRecognition } from '@/Hooks/useFaceRecognition';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -10,6 +11,7 @@ export default function Dashboard({
     aturanJam = {},
     logPekanIni = [],
     ringkasanBulanIni = null,
+    faceProfile = { registered: false, registered_at_label: null, descriptor: null, threshold: 0.55 },
     flashStatus = null,
 }) {
     const { auth, errors = {} } = usePage().props;
@@ -36,7 +38,17 @@ export default function Dashboard({
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const overlayCanvasRef = useRef(null);
     const streamRef = useRef(null);
+
+    const { modelsReady, modelsLoading, modelError, faceState, latestDescriptorRef } =
+        useFaceRecognition({
+            videoRef,
+            overlayCanvasRef,
+            active: cameraActive && !capturedPreview,
+            faceProfile,
+            userName: user.nama,
+        });
 
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
@@ -124,6 +136,61 @@ export default function Dashboard({
         }
     }, []);
 
+    const handleEnrollFaceOnly = async () => {
+        setCameraNote(null);
+
+        if (!cameraActive || !streamRef.current || !videoRef.current) {
+            const opened = await startLiveCamera();
+            if (opened) {
+                setCameraNote(
+                    'Kamera aktif. Arahkan wajah hingga bingkai deteksi muncul, lalu klik kembali untuk mendaftarkan wajah.'
+                );
+            }
+            return;
+        }
+
+        if (modelError) {
+            setCameraNote(modelError);
+            return;
+        }
+
+        if (modelsLoading || !modelsReady) {
+            setCameraNote('Model Face Recognition sedang disiapkan, mohon tunggu sebentar...');
+            return;
+        }
+
+        if (faceState.status === 'multiple_faces') {
+            setCameraNote('Pastikan hanya 1 wajah yang berada di depan kamera.');
+            return;
+        }
+
+        const descriptor = latestDescriptorRef.current;
+        if (!Array.isArray(descriptor) || descriptor.length !== 128) {
+            setCameraNote('Wajah belum terdeteksi dengan jelas. Arahkan wajah lurus ke kamera.');
+            return;
+        }
+
+        setSubmittingMode('enroll');
+        router.post(
+            route('absen-harian.enroll-face'),
+            {
+                sumber: 'live',
+                face_descriptor: descriptor,
+                redirect_to: 'dashboard',
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setSubmittingMode(null);
+                    stopCamera();
+                },
+                onError: () => {
+                    setSubmittingMode(null);
+                },
+            }
+        );
+    };
+
     const handleCaptureAndSubmit = async (mode) => {
         setCameraNote(null);
 
@@ -132,6 +199,34 @@ export default function Dashboard({
             if (opened) {
                 setCameraNote('Kamera aktif. Klik tombol sekali lagi untuk mengambil foto & menyimpan presensi.');
             }
+            return;
+        }
+
+        if (modelError) {
+            setCameraNote(modelError);
+            return;
+        }
+
+        if (modelsLoading || !modelsReady) {
+            setCameraNote('Model Face Recognition sedang dimuat, tunggu 1–2 detik lalu tekan kembali.');
+            return;
+        }
+
+        if (faceState.status === 'mismatch') {
+            setCameraNote(
+                'Verifikasi ditolak: Wajah di depan kamera tidak cocok dengan data biometrik pemilik akun ini.'
+            );
+            return;
+        }
+
+        if (faceState.status === 'multiple_faces') {
+            setCameraNote('Pastikan hanya 1 wajah yang berada di depan kamera.');
+            return;
+        }
+
+        const descriptor = latestDescriptorRef.current;
+        if (!Array.isArray(descriptor) || descriptor.length !== 128) {
+            setCameraNote('Wajah belum terdeteksi dengan jelas oleh sensor Face Recognition.');
             return;
         }
 
@@ -176,6 +271,7 @@ export default function Dashboard({
             foto_capture: dataUrl,
             waktu_ambil: waktuAmbilIso,
             sumber: 'live',
+            face_descriptor: descriptor,
             redirect_to: 'dashboard',
         };
 
@@ -296,7 +392,13 @@ export default function Dashboard({
             : 'Guru Pengajar';
 
     const serverError =
-        errors.absen || errors.foto_capture || errors.waktu_ambil || errors.sumber || null;
+        errors.absen ||
+        errors.face_descriptor ||
+        errors.foto_capture ||
+        errors.waktu_ambil ||
+        errors.sumber ||
+        modelError ||
+        null;
 
     const pctBulanIni = ringkasanBulanIni?.persentase_kehadiran ?? '100.0';
     const bulanLabel = ringkasanBulanIni?.bulan_label ?? 'Bulan Ini';
@@ -417,7 +519,7 @@ export default function Dashboard({
 
                             <canvas ref={canvasRef} className="hidden" />
 
-                            {/* Clear Live Camera Viewfinder Frame (Only Location Overlay) */}
+                            {/* Clear Live Camera Viewfinder Frame (Dynamic Face Box + Location Overlay) */}
                             <div className="relative mt-4 aspect-[4/3] rounded-2xl overflow-hidden border border-[#DCE6E1] bg-[#0A221A] select-none">
                                 <video
                                     ref={videoRef}
@@ -428,6 +530,15 @@ export default function Dashboard({
                                         cameraActive && !capturedPreview
                                             ? 'opacity-100'
                                             : 'opacity-0 pointer-events-none absolute inset-0'
+                                    }`}
+                                />
+
+                                <canvas
+                                    ref={overlayCanvasRef}
+                                    className={`pointer-events-none absolute inset-0 z-10 h-full w-full transition-opacity duration-150 ${
+                                        cameraActive && !capturedPreview
+                                            ? 'opacity-100'
+                                            : 'opacity-0'
                                     }`}
                                 />
 
@@ -457,7 +568,7 @@ export default function Dashboard({
                                 )}
 
                                 {/* Clean Bottom Location-Only Overlay */}
-                                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex items-center gap-2 rounded-xl border border-white/15 bg-[#0A241B]/80 px-3 py-2 text-white backdrop-blur-xs">
+                                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-center gap-2 rounded-xl border border-white/15 bg-[#0A241B]/80 px-3 py-2 text-white backdrop-blur-xs">
                                     <svg className="w-4 h-4 text-[#6EE7B7] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 19.5s6-5.25 6-10.125a6 6 0 10-12 0C6 14.25 12 19.5 12 19.5z" />
@@ -467,6 +578,52 @@ export default function Dashboard({
                                     </span>
                                 </div>
                             </div>
+
+                            {/* Compact Face Recognition Status Row */}
+                            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E5ECE9] bg-[#F8FBF9] px-3 py-2 text-[10.5px]">
+                                <span
+                                    className={`font-bold ${
+                                        faceProfile?.registered
+                                            ? 'text-[#0E7452]'
+                                            : 'text-[#B45309]'
+                                    }`}
+                                >
+                                    {faceProfile?.registered
+                                        ? '🔒 Face ID Terkunci'
+                                        : '◉ Wajah Belum Terdaftar'}
+                                </span>
+                                {cameraActive && !capturedPreview && (
+                                    <span
+                                        className={`font-bold ${
+                                            modelsLoading
+                                                ? 'text-slate-500'
+                                                : faceState.status === 'matched' ||
+                                                    faceState.status === 'ready_enroll'
+                                                  ? 'text-[#0E7452]'
+                                                  : faceState.status === 'mismatch'
+                                                    ? 'text-[#DC2626]'
+                                                    : 'text-slate-600'
+                                        }`}
+                                    >
+                                        {modelsLoading ? 'Memuat model...' : faceState.label}
+                                    </span>
+                                )}
+                            </div>
+
+                            {!faceProfile?.registered && absenHariIni && (
+                                <button
+                                    type="button"
+                                    onClick={handleEnrollFaceOnly}
+                                    disabled={submittingMode !== null}
+                                    className="mt-2 w-full rounded-xl bg-[#0E7452] py-2 px-3 text-[11px] font-bold text-white hover:bg-[#0A5D41] disabled:opacity-60 transition"
+                                >
+                                    {submittingMode === 'enroll'
+                                        ? 'Mendaftarkan Wajah...'
+                                        : cameraActive
+                                          ? 'Daftarkan & Kunci Wajah Saya Sekarang'
+                                          : 'Buka Kamera & Daftarkan Wajah Saya'}
+                                </button>
+                            )}
 
                             {flashStatus && (
                                 <p className="mt-2.5 rounded-lg border border-[#CBE9DA] bg-[#E6F5EE] px-3 py-2 text-[11px] font-bold text-[#0E7452]">

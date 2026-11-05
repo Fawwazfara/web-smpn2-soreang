@@ -19,6 +19,7 @@ export default function Rekap({
     filters = {},
     aturanJam = {},
     tahunAjaranAktif = null,
+    flashStatus = null,
 }) {
     const { auth } = usePage().props;
     const user = auth.user;
@@ -29,6 +30,22 @@ export default function Rekap({
     const [status, setStatus] = useState(filters.status || 'all');
     const [search, setSearch] = useState(filters.search || '');
     const [selectedSelfie, setSelectedSelfie] = useState(null);
+    const [resetFaceTarget, setResetFaceTarget] = useState(null);
+    const [resettingFace, setResettingFace] = useState(false);
+
+    const handleConfirmResetFace = () => {
+        if (!resetFaceTarget || isKepsek) return;
+        setResettingFace(true);
+
+        router.delete(route('absen-harian.reset-face', resetFaceTarget.user_id), {
+            data: { tanggal, kategori, status, search },
+            preserveScroll: true,
+            onFinish: () => {
+                setResettingFace(false);
+                setResetFaceTarget(null);
+            },
+        });
+    };
 
     const applyFilters = (next = {}) => {
         const params = {
@@ -152,6 +169,15 @@ export default function Rekap({
                     </div>
                 </div>
 
+                {flashStatus && (
+                    <div className="rounded-xl border border-[#CBE9DA] bg-[#E6F5EE] px-4 py-3 text-xs font-bold text-[#0E7452] flex items-center gap-2">
+                        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2.3" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{flashStatus}</span>
+                    </div>
+                )}
+
                 {/* 2. Four Summary KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs">
@@ -172,7 +198,7 @@ export default function Rekap({
                             </span>
                         </div>
                         <p className="mt-2 text-[11px] font-semibold text-[#0E7452]">
-                            {ringkasan.sudah_pulang ?? 0} Pegawai tercatat sudah absen pulang
+                            {ringkasan.sudah_pulang ?? 0} Pulang • {ringkasan.wajah_terdaftar ?? 0} Face ID Terdaftar
                         </p>
                     </div>
 
@@ -343,7 +369,18 @@ export default function Rekap({
                                                 </div>
                                             </td>
                                             <td className="py-3.5 px-3 text-xs font-semibold text-slate-700 whitespace-nowrap">
-                                                {row.jabatan_label}
+                                                <div>{row.jabatan_label}</div>
+                                                <span
+                                                    className={`mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] font-bold ${
+                                                        row.face_registered
+                                                            ? 'bg-[#E6F5EE] text-[#0E7452]'
+                                                            : 'bg-slate-100 text-slate-500'
+                                                    }`}
+                                                >
+                                                    {row.face_registered
+                                                        ? '🔒 Face ID Aktif'
+                                                        : 'Belum Daftar Wajah'}
+                                                </span>
                                             </td>
                                             <td className="py-3.5 px-3 font-mono text-xs font-bold text-slate-900 whitespace-nowrap">
                                                 {row.jam_masuk}
@@ -381,26 +418,39 @@ export default function Rekap({
                                                 </div>
                                             </td>
                                             <td className="py-3.5 pl-3 pr-4 text-right whitespace-nowrap">
-                                                {row.foto_url ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSelectedSelfie(row)}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#EFF6F3] px-3 py-1.5 text-[11px] font-bold text-[#0E7452] hover:bg-[#DFEFE8] transition"
-                                                    >
-                                                        Lihat Selfie
-                                                    </button>
-                                                ) : !isKepsek && row.no_wa ? (
-                                                    <a
-                                                        href={`https://wa.me/${row.no_wa}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center gap-1 rounded-lg border border-[#E5ECE9] bg-white px-2.5 py-1 text-[10.5px] font-bold text-slate-600 hover:bg-[#F6F9F8] transition"
-                                                    >
-                                                        Konfirmasi WA
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-xs text-slate-300">-</span>
-                                                )}
+                                                <div className="inline-flex items-center justify-end gap-1.5">
+                                                    {row.foto_url ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedSelfie(row)}
+                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#EFF6F3] px-3 py-1.5 text-[11px] font-bold text-[#0E7452] hover:bg-[#DFEFE8] transition"
+                                                        >
+                                                            Lihat Selfie
+                                                        </button>
+                                                    ) : !isKepsek && row.no_wa ? (
+                                                        <a
+                                                            href={`https://wa.me/${row.no_wa}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="inline-flex items-center gap-1 rounded-lg border border-[#E5ECE9] bg-white px-2.5 py-1 text-[10.5px] font-bold text-slate-600 hover:bg-[#F6F9F8] transition"
+                                                        >
+                                                            Konfirmasi WA
+                                                        </a>
+                                                    ) : isKepsek || !row.face_registered ? (
+                                                        <span className="text-xs text-slate-300">-</span>
+                                                    ) : null}
+
+                                                    {!isKepsek && row.face_registered && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setResetFaceTarget(row)}
+                                                            className="inline-flex items-center gap-1 rounded-lg border border-[#FAD4D4] bg-[#FFF8F8] px-2.5 py-1.5 text-[10.5px] font-bold text-[#DC2626] hover:bg-[#FEECEC] transition"
+                                                            title="Reset Kunci Biometrik Wajah (Hanya Admin)"
+                                                        >
+                                                            Reset Wajah
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -498,6 +548,45 @@ export default function Rekap({
                                         : 'Terlambat'}
                                 </span>
                             </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Admin-Only Reset Face Biometric Modal */}
+            <Modal
+                show={Boolean(resetFaceTarget) && !isKepsek}
+                onClose={() => !resettingFace && setResetFaceTarget(null)}
+                maxWidth="sm"
+            >
+                {resetFaceTarget && (
+                    <div className="p-5 sm:p-6">
+                        <h3 className="font-serif text-lg font-bold text-slate-900">
+                            Reset Data Biometrik Wajah
+                        </h3>
+                        <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                            Apakah Anda yakin ingin menghapus kunci Face Recognition untuk{' '}
+                            <strong className="text-slate-900">{resetFaceTarget.nama}</strong> (NIP:{' '}
+                            {resetFaceTarget.username})? Setelah di-reset, pegawai ini dapat mendaftarkan wajah baru melalui kamera live.
+                        </p>
+
+                        <div className="mt-5 flex items-center justify-end gap-2.5">
+                            <button
+                                type="button"
+                                onClick={() => setResetFaceTarget(null)}
+                                disabled={resettingFace}
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmResetFace}
+                                disabled={resettingFace}
+                                className="rounded-xl bg-[#DC2626] px-4 py-2 text-xs font-bold text-white hover:bg-[#B91C1C] disabled:opacity-60"
+                            >
+                                {resettingFace ? 'Mereset...' : 'Ya, Reset Wajah'}
+                            </button>
                         </div>
                     </div>
                 )}

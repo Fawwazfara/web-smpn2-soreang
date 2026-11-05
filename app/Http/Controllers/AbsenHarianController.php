@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -151,8 +152,96 @@ class AbsenHarianController extends Controller
                 'rekan' => $rekanPiket,
             ],
             'pilihanBulan' => $pilihanBulan,
+            'faceProfile' => self::buildFaceProfile($user, $tz),
             'flashStatus' => session('status'),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function buildFaceProfile(User $user, string $tz): array
+    {
+        $expectedLen = (int) config('absensi.face_recognition.descriptor_length', 128);
+        $descriptor = is_array($user->face_descriptor) && count($user->face_descriptor) === $expectedLen
+            ? array_map('floatval', array_values($user->face_descriptor))
+            : null;
+
+        return [
+            'registered' => $descriptor !== null,
+            'registered_at_label' => $user->face_registered_at
+                ? Carbon::parse($user->face_registered_at)->setTimezone($tz)->format('d M Y, H:i').' WIB'
+                : null,
+            'descriptor' => $descriptor,
+            'threshold' => (float) config('absensi.face_recognition.threshold', 0.55),
+        ];
+    }
+
+    public function enrollFace(Request $request): RedirectResponse
+    {
+        if (count($request->allFiles()) > 0) {
+            throw ValidationException::withMessages([
+                'absen' => 'Upload file dari galeri tidak diizinkan. Pendaftaran wajah wajib menggunakan kamera live.',
+            ]);
+        }
+
+        $expectedLen = (int) config('absensi.face_recognition.descriptor_length', 128);
+        $validated = $request->validate([
+            'sumber' => ['required', 'string', Rule::in(['live'])],
+            'face_descriptor' => ['required', 'array', 'size:'.$expectedLen],
+            'face_descriptor.*' => ['required', 'numeric', 'between:-5,5'],
+            'redirect_to' => ['nullable', 'string', Rule::in(['index', 'dashboard'])],
+        ]);
+
+        $user = $request->user();
+        if (is_array($user->face_descriptor) && count($user->face_descriptor) === $expectedLen) {
+            throw ValidationException::withMessages([
+                'absen' => 'Wajah biometrik Anda sudah terdaftar dan terkunci. Hubungi Admin jika perlu melakukan reset wajah.',
+            ]);
+        }
+
+        $vector = [];
+        $sumSq = 0.0;
+        foreach ($validated['face_descriptor'] as $val) {
+            $f = (float) $val;
+            $vector[] = round($f, 6);
+            $sumSq += $f * $f;
+        }
+
+        if (sqrt($sumSq) < 0.05) {
+            throw ValidationException::withMessages([
+                'absen' => 'Vektor biometrik wajah tidak terbaca dengan jelas. Ulangi di tempat yang cukup cahaya.',
+            ]);
+        }
+
+        $user->update([
+            'face_descriptor' => $vector,
+            'face_registered_at' => Carbon::now(config('app.timezone', 'UTC')),
+        ]);
+
+        $targetRoute = ($validated['redirect_to'] ?? 'index') === 'dashboard'
+            ? 'dashboard'
+            : 'absen-harian.index';
+
+        return redirect()
+            ->route($targetRoute)
+            ->with('status', 'Wajah biometrik Anda berhasil didaftarkan dan dikunci pada akun ini.');
+    }
+
+    public function resetFace(Request $request, User $user): RedirectResponse
+    {
+        if (! in_array($user->role, ['guru', 'guru_piket'], true)) {
+            abort(403);
+        }
+
+        $user->update([
+            'face_descriptor' => null,
+            'face_registered_at' => null,
+        ]);
+
+        return redirect()
+            ->route('absen-harian.rekap', $request->only(['tanggal', 'kategori', 'status', 'search']))
+            ->with('status', 'Data wajah biometrik '.$user->nama.' berhasil di-reset. Pegawai dapat mendaftarkan wajah baru pada kamera live.');
     }
 
     public function store(StoreAbsenHarianRequest $request): RedirectResponse
@@ -172,6 +261,8 @@ class AbsenHarianController extends Controller
                 'absen' => 'Anda sudah melakukan presensi masuk hari ini.',
             ]);
         }
+
+        $faceCheck = $this->verifyOrEnrollFace($user, $request->validatedFaceDescriptor());
 
         $jamMasuk = (string) config('absensi.jam_masuk', '07:00');
         $toleransiMenit = (int) config('absensi.toleransi_menit', 15);
@@ -194,7 +285,10 @@ class AbsenHarianController extends Controller
 
         $appTz = config('app.timezone', 'UTC');
         $waktuAmbil = Carbon::parse((string) $request->validated('waktu_ambil'))->setTimezone($appTz);
-        $keterangan = $this->buildKeteranganLokasi($request);
+        $faceNote = $faceCheck['enrolled_now']
+            ? 'Face ID Terdaftar'
+            : 'Face Match '.number_format($faceCheck['similarity'], 1, '.', '').'%';
+        $keterangan = $this->buildKeteranganLokasi($request).' • '.$faceNote;
 
         try {
             AbsenHarian::create([
@@ -222,9 +316,13 @@ class AbsenHarianController extends Controller
             ? 'dashboard'
             : 'absen-harian.index';
 
+        $prefixMsg = $faceCheck['enrolled_now']
+            ? 'Wajah biometrik berhasil didaftarkan & presensi masuk dicatat pada pukul '
+            : 'Wajah cocok ('.number_format($faceCheck['similarity'], 1, '.', '').'%) • Presensi masuk dicatat pukul ';
+
         return redirect()
             ->route($targetRoute)
-            ->with('status', 'Presensi masuk berhasil dicatat pada pukul '.$now->format('H:i').' WIB ('.ucwords($status).').');
+            ->with('status', $prefixMsg.$now->format('H:i').' WIB ('.ucwords($status).').');
     }
 
     public function pulang(StoreAbsenHarianRequest $request): RedirectResponse
@@ -260,6 +358,8 @@ class AbsenHarianController extends Controller
             ]);
         }
 
+        $faceCheck = $this->verifyOrEnrollFace($user, $request->validatedFaceDescriptor());
+
         $capture = $request->decodedCapture();
         $fotoPulangPath = sprintf(
             'absen-harian/%s/%d-pulang-%s.%s',
@@ -281,7 +381,10 @@ class AbsenHarianController extends Controller
 
         return redirect()
             ->route($targetRoute)
-            ->with('status', 'Presensi pulang berhasil dicatat pada pukul '.$now->format('H:i').' WIB.');
+            ->with(
+                'status',
+                'Wajah terverifikasi ('.number_format($faceCheck['similarity'], 1, '.', '').'%) • Presensi pulang berhasil dicatat pukul '.$now->format('H:i').' WIB.'
+            );
     }
 
     public function rekap(Request $request): Response
@@ -308,11 +411,12 @@ class AbsenHarianController extends Controller
         $statusFilter = (string) $request->input('status', 'all');
         $search = trim((string) $request->input('search', ''));
 
+        $expectedLen = (int) config('absensi.face_recognition.descriptor_length', 128);
         $pegawaiWajib = User::query()
             ->whereIn('role', ['guru', 'guru_piket'])
             ->where('aktif', true)
             ->orderBy('nama')
-            ->get(['id', 'nama', 'username', 'role', 'jenis_pegawai', 'no_wa']);
+            ->get(['id', 'nama', 'username', 'role', 'jenis_pegawai', 'no_wa', 'face_descriptor', 'face_registered_at']);
 
         $absenMap = AbsenHarian::query()
             ->whereIn('user_id', $pegawaiWajib->pluck('id'))
@@ -320,7 +424,7 @@ class AbsenHarianController extends Controller
             ->get()
             ->keyBy('user_id');
 
-        $allRows = $pegawaiWajib->map(function (User $pegawai) use ($absenMap, $tz) {
+        $allRows = $pegawaiWajib->map(function (User $pegawai) use ($absenMap, $tz, $expectedLen) {
             /** @var AbsenHarian|null $absen */
             $absen = $absenMap->get($pegawai->id);
             $kategoriKey = $pegawai->role === 'guru_piket'
@@ -334,6 +438,7 @@ class AbsenHarianController extends Controller
             };
 
             $formatted = $absen ? $this->formatAbsenRecord($absen, $tz) : null;
+            $faceRegistered = is_array($pegawai->face_descriptor) && count($pegawai->face_descriptor) === $expectedLen;
 
             return [
                 'user_id' => $pegawai->id,
@@ -343,6 +448,10 @@ class AbsenHarianController extends Controller
                 'kategori' => $kategoriKey,
                 'jabatan_label' => $jabatanLabel,
                 'no_wa' => $pegawai->no_wa,
+                'face_registered' => $faceRegistered,
+                'face_registered_at' => $pegawai->face_registered_at
+                    ? Carbon::parse($pegawai->face_registered_at)->setTimezone($tz)->format('d M Y, H:i').' WIB'
+                    : null,
                 'sudah_absen' => $absen !== null,
                 'absen_id' => $absen?->id,
                 'jam_masuk' => $formatted['jam_masuk'] ?? '-',
@@ -363,6 +472,7 @@ class AbsenHarianController extends Controller
         $terlambat = $allRows->where('status', 'terlambat')->count();
         $belumAbsen = $allRows->where('status', 'belum_absen')->count();
         $sudahPulang = $allRows->whereNotNull('jam_pulang')->count();
+        $wajahTerdaftar = $allRows->where('face_registered', true)->count();
         $persentaseHadir = $totalWajib > 0
             ? round(($totalHadir / $totalWajib) * 100, 1)
             : 0.0;
@@ -414,6 +524,7 @@ class AbsenHarianController extends Controller
                 'terlambat' => $terlambat,
                 'belum_absen' => $belumAbsen,
                 'sudah_pulang' => $sudahPulang,
+                'wajah_terdaftar' => $wajahTerdaftar,
                 'persentase_hadir' => number_format($persentaseHadir, 1, '.', ''),
             ],
             'filters' => [
@@ -429,7 +540,72 @@ class AbsenHarianController extends Controller
                 'sekolah' => config('absensi.sekolah'),
             ],
             'tahunAjaranAktif' => $tahunAjaranAktif,
+            'flashStatus' => session('status'),
         ]);
+    }
+
+    /**
+     * @param  array<int, float>  $submittedDescriptor
+     * @return array{enrolled_now: bool, distance: float, similarity: float}
+     */
+    protected function verifyOrEnrollFace(User $user, array $submittedDescriptor): array
+    {
+        $expectedLen = (int) config('absensi.face_recognition.descriptor_length', 128);
+        $stored = $user->face_descriptor;
+
+        if (! is_array($stored) || count($stored) !== $expectedLen) {
+            $user->update([
+                'face_descriptor' => $submittedDescriptor,
+                'face_registered_at' => Carbon::now(config('app.timezone', 'UTC')),
+            ]);
+
+            return [
+                'enrolled_now' => true,
+                'distance' => 0.0,
+                'similarity' => 100.0,
+            ];
+        }
+
+        $distance = $this->euclideanDistance($stored, $submittedDescriptor);
+        $threshold = (float) config('absensi.face_recognition.threshold', 0.55);
+
+        if ($distance > $threshold) {
+            throw ValidationException::withMessages([
+                'absen' => sprintf(
+                    'Verifikasi Face Recognition gagal: Wajah pada kamera tidak cocok dengan data biometrik akun %s (selisih vektor %.3f > %.2f).',
+                    $user->nama,
+                    $distance,
+                    $threshold
+                ),
+            ]);
+        }
+
+        $similarity = round(max(50.0, min(99.9, (1.0 - ($distance / 1.15)) * 100.0)), 1);
+
+        return [
+            'enrolled_now' => false,
+            'distance' => $distance,
+            'similarity' => $similarity,
+        ];
+    }
+
+    /**
+     * @param  array<int, float|int|string>  $a
+     * @param  array<int, float|int|string>  $b
+     */
+    protected function euclideanDistance(array $a, array $b): float
+    {
+        $sum = 0.0;
+        $len = min(count($a), count($b));
+        $valsA = array_values($a);
+        $valsB = array_values($b);
+
+        for ($i = 0; $i < $len; $i++) {
+            $diff = ((float) $valsA[$i]) - ((float) $valsB[$i]);
+            $sum += $diff * $diff;
+        }
+
+        return sqrt($sum);
     }
 
     public function foto(Request $request, AbsenHarian $absenHarian): StreamedResponse
