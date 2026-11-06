@@ -70,11 +70,11 @@ class BeritaController extends Controller
     {
         $data = $request->validated();
 
-        // Handle pin: max 3 pinned articles
+        // Handle pin: max 4 pinned articles
         if ($request->boolean('is_pinned')) {
             $pinnedCount = Pengumuman::where('is_pinned', true)->count();
-            if ($pinnedCount >= 3) {
-                return back()->withErrors(['is_pinned' => 'Maksimal 3 berita yang bisa disematkan. Lepas pin berita lain dulu.'])->withInput();
+            if ($pinnedCount >= 4) {
+                return back()->withErrors(['is_pinned' => 'Maksimal 4 berita yang bisa disematkan. Lepas pin berita lain dulu.'])->withInput();
             }
             $data['pinned_at'] = now();
         }
@@ -112,8 +112,8 @@ class BeritaController extends Controller
 
         if ($willBePinned && !$wasPinned) {
             $pinnedCount = Pengumuman::where('is_pinned', true)->count();
-            if ($pinnedCount >= 3) {
-                return back()->withErrors(['is_pinned' => 'Maksimal 3 berita yang bisa disematkan. Lepas pin berita lain dulu.'])->withInput();
+            if ($pinnedCount >= 4) {
+                return back()->withErrors(['is_pinned' => 'Maksimal 4 berita yang bisa disematkan. Lepas pin berita lain dulu.'])->withInput();
             }
             $data['pinned_at'] = now();
         } elseif (!$willBePinned && $wasPinned) {
@@ -149,8 +149,8 @@ class BeritaController extends Controller
         }
 
         $pinnedCount = Pengumuman::where('is_pinned', true)->count();
-        if ($pinnedCount >= 3) {
-            return back()->withErrors(['is_pinned' => 'Maksimal 3 berita yang bisa disematkan. Lepas pin berita lain dulu.']);
+        if ($pinnedCount >= 4) {
+            return back()->withErrors(['is_pinned' => 'Maksimal 4 berita yang bisa disematkan. Lepas pin berita lain dulu.']);
         }
 
         $berita->update(['is_pinned' => true, 'pinned_at' => now()]);
