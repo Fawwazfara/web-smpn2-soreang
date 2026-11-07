@@ -1,15 +1,18 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
 export default function Dashboard({
     stats = {},
     kelasList = [],
+    sesiHariIni = [],
     absenHariIni = null,
     aturanJam = {},
 }) {
     const user = usePage().props.auth.user;
+    const { flash, errors } = usePage().props;
     const [kodeInput, setKodeInput] = useState('');
+    const [processing, setProcessing] = useState(false);
     const [inputMsg, setInputMsg] = useState(null);
     const [tingkatFilter, setTingkatFilter] = useState('all');
     const [now, setNow] = useState(() => new Date());
@@ -47,53 +50,74 @@ export default function Dashboard({
 
     const tahunAjaran = stats.tahun_ajaran_aktif;
 
-    const filteredKelas = useMemo(() => {
-        if (tingkatFilter === 'all') return kelasList;
-        return kelasList.filter((k) => String(k.tingkat) === String(tingkatFilter));
-    }, [kelasList, tingkatFilter]);
+    // Filter sessions by grade level
+    const filteredSesi = useMemo(() => {
+        if (tingkatFilter === 'all') return sesiHariIni;
+        return sesiHariIni.filter((sesi) => String(sesi.kelas?.tingkat) === String(tingkatFilter));
+    }, [sesiHariIni, tingkatFilter]);
 
     const handleVerifyCode = (e) => {
         e.preventDefault();
+        setInputMsg(null);
+
         if (kodeInput.length !== 6 || !/^\d+$/.test(kodeInput)) {
             setInputMsg({
                 type: 'error',
-                text: 'Kode unik wajib berupa 6 digit angka numerik dari guru pemilik sesi.',
+                text: 'Kode unik wajib berupa 6 digit angka numerik.',
             });
             return;
         }
 
-        setInputMsg({
-            type: 'info',
-            text: 'Modul pembukaan sesi pengganti (Task P2) akan memvalidasi kode ini terhadap sesi aktif.',
-        });
+        setProcessing(true);
+        router.post(
+            route('piket.klaim-kode'),
+            { kode: kodeInput },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setProcessing(false);
+                    setKodeInput('');
+                    setInputMsg(null);
+                },
+                onError: (errs) => {
+                    setProcessing(false);
+                    if (errs.kode) {
+                        setInputMsg({
+                            type: 'error',
+                            text: errs.kode,
+                        });
+                    }
+                },
+            }
+        );
     };
 
     return (
         <AuthenticatedLayout>
-            <Head title="Dashboard Guru Piket - SADA" />
+            <Head title="Dashboard Guru Piket - SADA SMPN 2 Soreang" />
 
             <div className="space-y-6">
-                {/* Dark Forest Green Hero Banner (Figma SiSADA Operational Style) */}
-                <div className="rounded-2xl bg-gradient-to-br from-[#0B2F23] via-[#103D2E] to-[#0D3326] p-6 text-white shadow-sm">
+                {/* 1. Hero Banner SADA Design System */}
+                <div className="rounded-[24px] bg-[#143823] p-6 text-white shadow-sm border border-[#002114]">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                         <div>
-                            <span className="inline-flex items-center rounded-md border border-[#2A7A5B] bg-[#1B5E45] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8CE9BE]">
+                            <span className="inline-flex items-center rounded-md bg-[#006C4A] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#82F5C1]">
                                 {tahunAjaran
-                                    ? `T.A. ${tahunAjaran.nama} ${tahunAjaran.semester} • PETUGAS PIKET`
+                                    ? `T.A. ${tahunAjaran.nama} ${tahunAjaran.semester} • PETUGAS GURU PIKET`
                                     : 'PETUGAS GURU PIKET HARIAN'}
                             </span>
                             <h1 className="mt-2.5 text-xl sm:text-2xl font-bold tracking-tight text-white">
                                 {sundaGreeting}, {user.nama}!
                             </h1>
-                            <p className="mt-1 text-xs text-[#A7D7C5]">
-                                Guru Piket • NIP: {user.username} • WhatsApp Koordinasi: {user.no_wa || 'Belum diatur'}
+                            <p className="mt-1 text-xs text-[#82F5C1]">
+                                Guru Piket Bertugas • NIP: {user.username} • WhatsApp: {user.no_wa || 'Belum diatur'}
                             </p>
                         </div>
 
                         {/* Live Clock Box */}
-                        <div className="flex items-center gap-3.5 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 self-start lg:self-auto">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#18543E] text-[#6EE7B7]">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.9" stroke="currentColor">
+                        <div className="flex items-center gap-3.5 rounded-xl border border-white/10 bg-white/[0.08] px-4 py-3 self-start lg:self-auto">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#002114] text-[#82F5C1]">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
@@ -102,59 +126,59 @@ export default function Dashboard({
                                     <span className="font-mono text-lg font-extrabold tracking-tight text-white">
                                         {liveClock}
                                     </span>
-                                    <span className="text-[10.5px] font-bold text-[#6EE7B7]">WIB</span>
+                                    <span className="text-[10.5px] font-bold text-[#82F5C1]">WIB</span>
                                 </div>
-                                <p className="text-[11px] text-[#9ED1BE]">{formattedFullDate}</p>
+                                <p className="text-[11px] text-[#CFD9F0]">{formattedFullDate}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-5 pt-3.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-[#D5EFE4]">
+                    <div className="mt-5 pt-3.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-[#CFD9F0]">
                         <div className="flex items-center gap-2">
-                            <span className="inline-flex h-2 w-2 rounded-full bg-[#34D399]" />
+                            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#82F5C1]" />
                             <span>
-                                <strong className="text-[#8CE9BE]">Aturan Integritas Sesi:</strong> Seluruh kelas berstatus Terkunci (Locked) sampai kode unik 6-digit valid dimasukkan.
+                                <strong className="text-white">Aturan Integritas Sesi:</strong> Sesuai PRD Bagian 2.C & 9.5, seluruh kelas & sesi KBM berstatus <strong>Terkunci (Locked)</strong>. Tombol absensi terbuka khusus sesi yang telah diklaim dengan kode unik.
                             </span>
                         </div>
-                        <span className="font-bold text-[#8CE9BE] shrink-0">
-                            {stats.total_kelas ?? kelasList.length} Rombel Terdaftar
+                        <span className="font-bold text-[#82F5C1] shrink-0">
+                            {stats.total_sesi ?? sesiHariIni.length} Sesi Terjadwal Hari Ini
                         </span>
                     </div>
                 </div>
 
-                {/* 2-Column Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left 5 Cols: Input Kode 6-Digit + Presensi Mandiri Piket */}
-                    <div className="lg:col-span-5 space-y-6">
-                        {/* Buka Sesi Kelas Pengganti Card */}
-                        <div className="rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs">
+                {/* 2. Grid Dashboard 2 Kolom */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* Left Column (4 cols): Form Masukkan Kode Unik & SOP Piket */}
+                    <div className="lg:col-span-4 space-y-6">
+                        {/* Box Input Kode 6-Digit */}
+                        <div className="rounded-[24px] border border-[#C5CEE3] bg-[#E8EEFF] p-6 shadow-sm">
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FEF3E2] text-[#B45309]">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#143823] text-[#82F5C1]">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818" />
                                         </svg>
                                     </div>
-                                    <h2 className="text-base font-bold text-slate-900">
+                                    <h2 className="text-base font-bold text-[#111C2D]">
                                         Buka Sesi Pengganti
                                     </h2>
                                 </div>
-                                <span className="rounded-full bg-[#E6F5EE] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#0E7452]">
+                                <span className="rounded-full bg-[#82F5C1]/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#002114]">
                                     KODE 6-DIGIT
                                 </span>
                             </div>
 
-                            <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-                                Masukkan <strong>kode unik 6 digit numerik</strong> dari guru pemilik sesi yang berhalangan hadir. Kode hanya berlaku sekali pakai untuk sesi kelas, jam pelajaran, dan tanggal terkait.
+                            <p className="mt-3 text-xs text-[#3F463F] leading-relaxed">
+                                Masukkan <strong>kode unik 6 digit numerik</strong> dari guru yang berhalangan hadir. Sesi kelas terkait akan terbuka agar Anda dapat mengisi absensi sebagai <strong>guru pengganti</strong>.
                             </p>
 
                             <form onSubmit={handleVerifyCode} className="mt-4 space-y-3">
                                 <div>
                                     <label
                                         htmlFor="kode-pengganti"
-                                        className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-500 mb-1.5"
+                                        className="block text-[10.5px] font-bold uppercase tracking-wider text-[#3F463F] mb-1.5"
                                     >
-                                        KODE UNIK SESI KELAS
+                                        KODE UNIK SESI (6 ANGKA)
                                     </label>
                                     <input
                                         id="kode-pengganti"
@@ -166,27 +190,35 @@ export default function Dashboard({
                                             setKodeInput(e.target.value.replace(/\D/g, ''))
                                         }
                                         placeholder="000000"
-                                        className="w-full rounded-xl border-[#DCE5E1] bg-[#F8FAF9] py-3 px-4 text-center font-mono text-xl font-extrabold tracking-[0.45em] text-slate-900 placeholder:text-slate-300 focus:border-[#0E7452] focus:bg-white focus:ring-[#0E7452]"
+                                        className="w-full rounded-[12px] border-[#C5CEE3] bg-white py-3 px-4 text-center font-mono text-xl font-extrabold tracking-[0.45em] text-[#111C2D] placeholder:text-[#C5CEE3] focus:border-[#006C4A] focus:ring-[#006C4A]"
                                     />
                                 </div>
 
                                 <button
                                     type="submit"
-                                    className="w-full rounded-xl bg-[#0F382A] py-3 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#164B38] transition flex items-center justify-center gap-2"
+                                    disabled={processing}
+                                    className="w-full rounded-[8px] bg-[#002114] py-3 px-4 text-xs font-semibold text-white hover:bg-[#143823] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-60"
                                 >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <svg className="w-4 h-4 text-[#82F5C1]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                                     </svg>
-                                    Validasi Kode & Buka Sesi
+                                    {processing ? 'Memproses Klaim...' : 'Buka Kunci Sesi Ini'}
                                 </button>
                             </form>
 
+                            {/* Flash alert or error */}
+                            {flash?.success && (
+                                <div className="mt-3.5 rounded-[12px] p-3 text-xs font-medium border border-[#006C4A]/30 bg-[#82F5C1]/30 text-[#002114]">
+                                    {flash.success}
+                                </div>
+                            )}
+
                             {inputMsg && (
                                 <div
-                                    className={`mt-3.5 rounded-xl p-3 text-xs font-medium ${
+                                    className={`mt-3.5 rounded-[12px] p-3 text-xs font-medium ${
                                         inputMsg.type === 'error'
-                                            ? 'border border-rose-200 bg-[#FFF5F5] text-[#DC2626]'
-                                            : 'border border-[#CBE9DA] bg-[#EDF6F1] text-[#0F382A]'
+                                            ? 'border border-[#C41E1E]/30 bg-[#C41E1E]/10 text-[#C41E1E]'
+                                            : 'border border-[#006C4A]/30 bg-[#82F5C1]/20 text-[#002114]'
                                     }`}
                                 >
                                     {inputMsg.text}
@@ -194,39 +226,39 @@ export default function Dashboard({
                             )}
 
                             {/* SOP Alur Penggantian */}
-                            <div className="mt-5 pt-4 border-t border-[#EDF2F0] space-y-2 text-[11px] text-slate-600">
-                                <div className="font-bold uppercase tracking-wider text-[10px] text-slate-400">
-                                    ALUR PENGGANTIAN MANUAL
+                            <div className="mt-5 pt-4 border-t border-[#C5CEE3] space-y-2 text-[11px] text-[#3F463F]">
+                                <div className="font-bold uppercase tracking-wider text-[10px] text-[#111C2D]">
+                                    ALUR PENGGANTIAN RESMI (PRD)
                                 </div>
                                 <div className="flex items-start gap-2">
-                                    <span className="font-bold text-[#0E7452]">1.</span>
-                                    <span>Guru pengampu menghubungi WhatsApp Anda terlebih dahulu.</span>
+                                    <span className="font-bold text-[#006C4A]">1.</span>
+                                    <span>Guru berhalangan hadir menghubungi WhatsApp Anda.</span>
                                 </div>
                                 <div className="flex items-start gap-2">
-                                    <span className="font-bold text-[#0E7452]">2.</span>
-                                    <span>Guru pengampu membuat kode 6-digit & mengirimkannya ke Anda.</span>
+                                    <span className="font-bold text-[#006C4A]">2.</span>
+                                    <span>Guru men-generate 6-digit kode unik dari dashboard miliknya.</span>
                                 </div>
                                 <div className="flex items-start gap-2">
-                                    <span className="font-bold text-[#0E7452]">3.</span>
-                                    <span>Masukkan kode di atas untuk membuka kunci kelas & mengisi absen siswa sebagai guru pengganti.</span>
+                                    <span className="font-bold text-[#006C4A]">3.</span>
+                                    <span>Masukkan kode di atas untuk membuka kunci sesi dan mengabsen siswa kelas tersebut.</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Presensi Harian Guru Piket (PRD Bagian 6: Guru Piket juga wajib absen harian) */}
-                        <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs space-y-3.5">
+                        <div className="rounded-[24px] border border-[#C5CEE3] bg-[#E8EEFF] p-5 shadow-sm space-y-3.5">
                             <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E6F5EE] text-[#0E7452]">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#143823] text-[#82F5C1]">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                                         </svg>
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-bold text-slate-900">
+                                        <h3 className="text-sm font-bold text-[#111C2D]">
                                             Presensi Harian Petugas Piket
                                         </h3>
-                                        <p className="text-[11px] text-slate-500">
+                                        <p className="text-[11px] text-[#3F463F]">
                                             {absenHariIni
                                                 ? `Masuk: ${absenHariIni.jam_masuk}${
                                                       absenHariIni.jam_pulang
@@ -241,8 +273,8 @@ export default function Dashboard({
                                     <span
                                         className={`rounded-md px-2.5 py-0.5 text-[10px] font-bold shrink-0 ${
                                             absenHariIni.status === 'tepat waktu'
-                                                ? 'bg-[#E6F5EE] text-[#0E7452]'
-                                                : 'bg-[#FEF3E2] text-[#B45309]'
+                                                ? 'bg-[#82F5C1]/40 text-[#006C4A]'
+                                                : 'bg-amber-100 text-amber-800'
                                         }`}
                                     >
                                         {absenHariIni.status === 'tepat waktu'
@@ -250,7 +282,7 @@ export default function Dashboard({
                                             : 'Terlambat'}
                                     </span>
                                 ) : (
-                                    <span className="rounded-md bg-[#FEECEC] px-2.5 py-0.5 text-[10px] font-bold text-[#DC2626] shrink-0">
+                                    <span className="rounded-md bg-[#C41E1E]/10 px-2.5 py-0.5 text-[10px] font-bold text-[#C41E1E] shrink-0">
                                         Belum Absen
                                     </span>
                                 )}
@@ -258,10 +290,10 @@ export default function Dashboard({
 
                             <Link
                                 href={route('absen-harian.index')}
-                                className={`w-full rounded-xl py-2.5 px-4 text-xs font-bold transition flex items-center justify-center gap-2 ${
+                                className={`w-full rounded-[8px] py-2.5 px-4 text-xs font-bold transition flex items-center justify-center gap-2 ${
                                     absenHariIni
-                                        ? 'border border-[#CBE9DA] bg-[#F4F9F6] text-[#0E7452] hover:bg-[#E6F5EE]'
-                                        : 'bg-[#0F382A] text-white hover:bg-[#164B38] shadow-xs'
+                                        ? 'border border-[#C5CEE3] bg-white text-[#006C4A] hover:bg-[#82F5C1]/20'
+                                        : 'bg-[#002114] text-white hover:bg-[#143823] shadow-xs'
                                 }`}
                             >
                                 {absenHariIni?.jam_pulang
@@ -271,41 +303,77 @@ export default function Dashboard({
                                       : 'Buka Kamera & Absen Masuk Sekarang'}
                             </Link>
                         </div>
+
+                        {/* Kartu Ringkasan Status Sesi Hari Ini */}
+                        <div className="rounded-[24px] border border-[#C5CEE3] bg-[#E8EEFF] p-5 shadow-sm space-y-3">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-[#111C2D]">
+                                Rekap Kunci Sesi Hari Ini
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3 text-center">
+                                <div className="bg-white rounded-[16px] p-3 border border-[#C5CEE3]">
+                                    <span className="text-xs font-semibold text-[#C41E1E] flex items-center justify-center gap-1">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                        Terkunci
+                                    </span>
+                                    <span className="block text-2xl font-extrabold text-[#111C2D] mt-1">
+                                        {stats.total_terkunci ?? sesiHariIni.filter((s) => s.status_kunci === 'terkunci').length}
+                                    </span>
+                                </div>
+                                <div className="bg-white rounded-[16px] p-3 border border-[#C5CEE3]">
+                                    <span className="text-xs font-semibold text-[#006C4A] flex items-center justify-center gap-1">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                        </svg>
+                                        Terbuka
+                                    </span>
+                                    <span className="block text-2xl font-extrabold text-[#111C2D] mt-1">
+                                        {stats.total_terbuka ?? sesiHariIni.filter((s) => s.status_kunci === 'terbuka').length}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Right 7 Cols: Grid Semua Kelas Terkunci (PRD 2.C) */}
-                    <div className="lg:col-span-7 rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs flex flex-col justify-between">
-                        <div>
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                                            Status Ruang & Sesi Kelas Hari Ini
-                                        </h2>
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-[#FEECEC] px-2.5 py-0.5 text-[10px] font-bold text-[#DC2626]">
-                                            Terkunci
-                                        </span>
-                                    </div>
-                                    <p className="mt-0.5 text-xs text-slate-500">
-                                        Seluruh kelas terkunci secara default dan hanya terbuka untuk sesi yang kodenya telah divalidasi.
-                                    </p>
+                    {/* Right Column (8 cols): Grid Daftar Sesi Kelas Hari Ini (Locked Strict) */}
+                    <div className="lg:col-span-8 rounded-[24px] border border-[#C5CEE3] bg-[#E8EEFF] p-6 shadow-sm space-y-5">
+                        {/* Header & Filter Sesi */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-lg font-bold text-[#111C2D]">
+                                        Daftar Sesi Pembelajaran Kelas Hari Ini
+                                    </h2>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#C41E1E]/10 px-2.5 py-0.5 text-[10px] font-bold text-[#C41E1E]">
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                        Status Terkunci
+                                    </span>
                                 </div>
+                                <p className="text-xs text-[#3F463F] mt-0.5">
+                                    Seluruh sesi berstatus terkunci (locked). Absensi terbuka khusus sesi yang telah diklaim kode unik 6-digit.
+                                </p>
+                            </div>
 
-                                <div className="inline-flex items-center rounded-xl bg-[#F4F7F6] p-1 text-xs self-start">
+                            {/* Tingkat Tabs */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="inline-flex rounded-[8px] bg-white border border-[#C5CEE3] p-0.5 text-xs">
                                     {[
-                                        { key: 'all', label: 'Semua' },
-                                        { key: '7', label: 'Kelas 7' },
-                                        { key: '8', label: 'Kelas 8' },
-                                        { key: '9', label: 'Kelas 9' },
+                                        { key: 'all', label: 'Semua Tingkat' },
+                                        { key: '7', label: 'Kls 7' },
+                                        { key: '8', label: 'Kls 8' },
+                                        { key: '9', label: 'Kls 9' },
                                     ].map((tab) => (
                                         <button
                                             key={tab.key}
                                             type="button"
                                             onClick={() => setTingkatFilter(tab.key)}
-                                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                                            className={`rounded-[6px] px-2.5 py-1 text-xs font-semibold transition ${
                                                 tingkatFilter === tab.key
-                                                    ? 'bg-white text-slate-900 shadow-2xs'
-                                                    : 'text-slate-500 hover:text-slate-800'
+                                                    ? 'bg-[#002114] text-white'
+                                                    : 'text-[#3F463F] hover:text-[#111C2D]'
                                             }`}
                                         >
                                             {tab.label}
@@ -313,57 +381,127 @@ export default function Dashboard({
                                     ))}
                                 </div>
                             </div>
+                        </div>
 
-                            {filteredKelas.length === 0 ? (
-                                <div className="mt-6 rounded-xl border border-dashed border-[#DCE5E1] bg-[#F8FAF9] p-10 text-center text-xs text-slate-400">
-                                    Belum ada data ruang kelas pada tahun ajaran aktif.
-                                </div>
-                            ) : (
-                                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
-                                    {filteredKelas.map((kelas) => (
+                        {/* List Grid Sesi Kelas */}
+                        {filteredSesi.length === 0 ? (
+                            <div className="rounded-[16px] border border-dashed border-[#C5CEE3] bg-white/70 p-10 text-center space-y-2">
+                                <svg className="w-10 h-10 text-[#3F463F]/50 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <p className="text-sm font-semibold text-[#111C2D]">
+                                    Tidak ada sesi pembelajaran yang terjadwal untuk hari ini.
+                                </p>
+                                <p className="text-xs text-[#3F463F]">
+                                    Pastikan Tahun Ajaran aktif dan jadwal pelajaran telah disinkronkan.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {filteredSesi.map((sesi, idx) => {
+                                    const isLocked = sesi.status_kunci === 'terkunci';
+                                    const jamMulai = sesi.jam_pelajaran?.mulai ? sesi.jam_pelajaran.mulai.slice(0, 5) : '-';
+                                    const jamSelesai = sesi.jam_pelajaran?.selesai ? sesi.jam_pelajaran.selesai.slice(0, 5) : '-';
+
+                                    return (
                                         <div
-                                            key={kelas.id}
-                                            className="rounded-xl border border-[#E5ECE9] bg-[#F8FAF9] p-4 flex flex-col justify-between select-none"
+                                            key={sesi.id ?? `slot-${sesi.slot_id}-${idx}`}
+                                            className={`rounded-[20px] border p-4 flex flex-col justify-between transition-all ${
+                                                isLocked
+                                                    ? 'bg-white border-[#C5CEE3] shadow-xs'
+                                                    : 'bg-white border-[#006C4A] ring-2 ring-[#006C4A]/20'
+                                            }`}
                                         >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div>
-                                                    <span className="text-sm font-extrabold text-slate-900">
-                                                        Kelas {kelas.nama}
+                                            <div className="space-y-3">
+                                                {/* Header Kartu Sesi */}
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#CFD9F0] text-[#111C2D]">
+                                                            Jam Ke-{sesi.jam_pelajaran?.jam_ke ?? '-'} ({jamMulai} - {jamSelesai} WIB)
+                                                        </span>
+                                                        <h3 className="text-base font-bold text-[#111C2D] mt-1">
+                                                            Kelas {sesi.kelas?.nama ?? '-'}
+                                                        </h3>
+                                                    </div>
+
+                                                    {/* Badge Status Kunci */}
+                                                    <span
+                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                                            isLocked
+                                                                ? 'bg-[#C41E1E]/10 text-[#C41E1E]'
+                                                                : 'bg-[#82F5C1]/40 text-[#006C4A]'
+                                                        }`}
+                                                    >
+                                                        {isLocked ? (
+                                                            <>
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                                </svg>
+                                                                Terkunci
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                                                </svg>
+                                                                Terbuka
+                                                            </>
+                                                        )}
                                                     </span>
-                                                    <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[140px]">
-                                                        {kelas.wali_kelas
-                                                            ? `Wali: ${kelas.wali_kelas.nama}`
-                                                            : `Tingkat ${kelas.tingkat ?? '-'}`}
-                                                    </p>
                                                 </div>
-                                                <div
-                                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white border border-[#E5ECE9] text-slate-400"
-                                                    title="Sesi Terkunci"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                                                    </svg>
+
+                                                {/* Detail Mapel & Guru Pengampu */}
+                                                <div className="bg-[#E8EEFF]/50 rounded-[12px] p-3 space-y-1.5 text-xs">
+                                                    <div className="flex items-center justify-between text-[#111C2D]">
+                                                        <span className="font-semibold text-[#3F463F]">Mata Pelajaran:</span>
+                                                        <span className="font-bold">{sesi.mapel?.nama ?? '-'}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[#111C2D]">
+                                                        <span className="font-semibold text-[#3F463F]">Guru Terjadwal:</span>
+                                                        <span className="font-medium text-right truncate max-w-[150px]">
+                                                            {sesi.guru?.nama ?? '-'}
+                                                        </span>
+                                                    </div>
+                                                    {sesi.guru_pengganti && (
+                                                        <div className="flex items-center justify-between text-[#006C4A] pt-1 border-t border-[#C5CEE3]/50">
+                                                            <span className="font-semibold">Guru Pengganti:</span>
+                                                            <span className="font-bold">{sesi.guru_pengganti.nama}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            <div className="mt-4 pt-2.5 border-t border-[#E8EEEC] flex items-center justify-between text-[10.5px]">
-                                                <span className="font-bold uppercase tracking-wider text-slate-400">
-                                                    SESI LOCKED
-                                                </span>
-                                                <span className="font-semibold text-slate-500">
-                                                    {kelas.siswa_count ?? 0} Siswa
-                                                </span>
+                                            {/* Action Button: Disabled if Locked */}
+                                            <div className="mt-4 pt-3 border-t border-[#C5CEE3]/60">
+                                                {isLocked ? (
+                                                    <button
+                                                        type="button"
+                                                        disabled
+                                                        className="w-full rounded-[8px] bg-[#C5CEE3]/60 text-[#3F463F] py-2.5 px-3 text-xs font-semibold cursor-not-allowed flex items-center justify-center gap-2"
+                                                        title="Sesi terkunci. Masukkan kode unik 6-digit untuk membuka."
+                                                    >
+                                                        <svg className="w-4 h-4 text-[#C41E1E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                        </svg>
+                                                        Masukkan Kode 6-Digit untuk Membuka Sesi
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="w-full rounded-[8px] bg-[#006C4A] hover:bg-[#002114] text-white py-2.5 px-3 text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs"
+                                                    >
+                                                        <svg className="w-4 h-4 text-[#82F5C1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        Mulai Absen Siswa
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-[11px] text-slate-500">
-                            <span>Kode unik hanya berlaku untuk 1 sesi spesifik & memiliki masa kadaluarsa.</span>
-                            <span className="font-bold text-[#0E7452]">SiSADA Piket</span>
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

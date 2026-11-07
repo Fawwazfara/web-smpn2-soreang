@@ -15,9 +15,19 @@ class UpdateJamPelajaranRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $jamPelajaran = $this->route('jamPelajaran') ?? $this->route('jam_pelajaran') ?? $this->route('timeSlot') ?? $this->route('time_slot');
+        $model = $jamPelajaran instanceof JamPelajaran ? $jamPelajaran : JamPelajaran::find($jamPelajaran);
+
+        $kelompokHari = $this->input('kelompok_hari');
+        $defaultHari = ($kelompokHari === 'jumat') ? 5 : ($model?->hari ?? 1);
+
         $this->merge([
             'mulai' => $this->input('mulai') ?? $this->input('waktu_mulai'),
             'selesai' => $this->input('selesai') ?? $this->input('waktu_selesai'),
+            'sesi' => $this->input('sesi') ?? ($model?->sesi ?? 'pagi'),
+            'hari' => $this->input('hari') ?? $defaultHari,
+            'jenis_kegiatan' => $this->input('jenis_kegiatan') ?? ($model?->jenis_kegiatan ?? 'kbm'),
+            'kelompok_hari' => $kelompokHari ?? ($this->input('hari') == 5 ? 'jumat' : ($model?->kelompok_hari ?? 'senin-kamis')),
         ]);
     }
 
@@ -29,6 +39,7 @@ class UpdateJamPelajaranRequest extends FormRequest
         return [
             'sesi' => ['required', 'string', Rule::in(['pagi', 'siang'])],
             'hari' => ['required', 'integer', 'min:1', 'max:5'],
+            'kelompok_hari' => ['nullable', 'string', Rule::in(['senin-kamis', 'jumat'])],
             'jam_ke' => [
                 'required',
                 'integer',

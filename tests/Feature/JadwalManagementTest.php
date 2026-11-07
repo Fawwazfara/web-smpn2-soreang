@@ -41,6 +41,8 @@ class JadwalManagementTest extends TestCase
         $this->tahunAjaran = TahunAjaran::create([
             'nama' => '2026/2027',
             'semester' => 'Ganjil',
+            'tanggal_mulai' => '2026-07-01',
+            'tanggal_selesai' => '2026-12-31',
             'aktif' => true,
         ]);
 
@@ -202,11 +204,11 @@ class JadwalManagementTest extends TestCase
 
         $response->assertRedirect();
         $this->assertDatabaseHas('sesi', [
-            'tanggal' => '2026-11-02',
             'kelas_id' => $this->kelas->id,
             'jam_pelajaran_id' => $this->jamPelajaran->id,
             'guru_id' => $this->guru->id,
             'status' => 'terjadwal',
         ]);
+        $this->assertStringStartsWith('2026-11-02', (string) \App\Models\Sesi::first()->tanggal);
     }
 }

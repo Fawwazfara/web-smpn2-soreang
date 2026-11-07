@@ -68,4 +68,9 @@ class Sesi extends Model
     {
         return $this->hasMany(AbsenSiswa::class);
     }
+
+    public function kodePengganti(): HasMany
+    {
+        return $this->hasMany(KodePengganti::class);
+    }
 }
