@@ -1,20 +1,28 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
-export default function Dashboard({ stats = {}, kelasList = [] }) {
+export default function Dashboard({
+    stats = {},
+    kelasList = [],
+    absenGuruTerbaru = [],
+}) {
     const user = usePage().props.auth.user;
     const [tingkatFilter, setTingkatFilter] = useState('all');
 
     const tahunAjaran = stats.tahun_ajaran_aktif;
     const totalGuru = stats.total_guru ?? 0;
-    const guruAktif = stats.total_guru_aktif ?? totalGuru;
     const tendik = stats.total_tendik ?? 0;
     const totalPiket = stats.total_guru_piket ?? 0;
     const totalSiswa = stats.total_siswa ?? 0;
     const totalKelas = stats.total_kelas ?? kelasList.length;
 
-    const guruAktifPct = totalGuru > 0 ? ((guruAktif / totalGuru) * 100).toFixed(1) : '100.0';
+    const totalWajibAbsen = stats.total_wajib_absen ?? totalGuru + totalPiket;
+    const hadirHariIni = stats.hadir_hari_ini ?? 0;
+    const tepatWaktuHariIni = stats.tepat_waktu_hari_ini ?? 0;
+    const terlambatHariIni = stats.terlambat_hari_ini ?? 0;
+    const belumAbsenHariIni = stats.belum_absen_hari_ini ?? 0;
+    const hadirPctHariIni = stats.persentase_hadir_hari_ini ?? '0.0';
 
     const filteredKelas = useMemo(() => {
         const list =
@@ -71,12 +79,12 @@ export default function Dashboard({ stats = {}, kelasList = [] }) {
 
                 {/* 4 Executive KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    {/* Guru & Tendik */}
+                    {/* Presensi Tenaga Pendidik Hari Ini */}
                     <div className="rounded-2xl border border-[#E5ECE9] bg-white p-5 shadow-2xs flex flex-col justify-between">
                         <div>
                             <div className="flex items-start justify-between">
                                 <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
-                                    TENAGA PENDIDIK
+                                    PRESENSI PEGAWAI HARI INI
                                 </span>
                                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6F5EE] text-[#0E7452]">
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -85,16 +93,21 @@ export default function Dashboard({ stats = {}, kelasList = [] }) {
                                 </div>
                             </div>
                             <div className="mt-2 flex items-baseline gap-1.5">
-                                <span className="text-3xl font-extrabold text-slate-900">{guruAktif}</span>
-                                <span className="text-xs font-semibold text-slate-400">/ {totalGuru} Pegawai</span>
+                                <span className="text-3xl font-extrabold text-slate-900">{hadirHariIni}</span>
+                                <span className="text-xs font-semibold text-slate-400">
+                                    / {totalWajibAbsen} Wajib Absen
+                                </span>
                             </div>
                             <p className="mt-1 text-[11px] font-semibold text-[#0E7452]">
-                                ↗ {guruAktifPct}% Akun Aktif Wajib Selfie
+                                ↗ {hadirPctHariIni}% ({tepatWaktuHariIni} Tepat • {terlambatHariIni} Telat • {belumAbsenHariIni} Belum)
                             </p>
                         </div>
-                        <div className="mt-4 rounded-xl bg-[#F4F9F6] px-3 py-2 text-[11px] font-bold text-[#0E7452] text-center">
-                            Validasi Kamera Langsung
-                        </div>
+                        <Link
+                            href={route('absen-harian.rekap')}
+                            className="mt-4 block rounded-xl bg-[#F4F9F6] px-3 py-2 text-[11px] font-bold text-[#0E7452] text-center hover:bg-[#E6F5EE] transition"
+                        >
+                            Pantau Rekap & Selfie Live →
+                        </Link>
                     </div>
 
                     {/* Total Siswa */}
@@ -355,6 +368,63 @@ export default function Dashboard({ stats = {}, kelasList = [] }) {
                             Seluruh guru pengajar, tenaga kependidikan, dan guru piket wajib melakukan presensi harian berbasis kamera langsung.
                         </div>
                     </div>
+                </div>
+
+                {/* Live Monitoring Presensi Guru & Staff Hari Ini (Read-Only) */}
+                <div className="rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#EDF2F0]">
+                        <div>
+                            <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                                Log Presensi Kamera Live Pegawai Hari Ini
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Rekaman waktu-nyata kehadiran guru pengajar, tenaga kependidikan, dan petugas piket (Read-Only)
+                            </p>
+                        </div>
+                        <Link
+                            href={route('absen-harian.rekap')}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-[#0F382A] px-4 py-2 text-xs font-bold text-white hover:bg-[#164B38] transition"
+                        >
+                            Buka Rekap Lengkap & Foto Selfie →
+                        </Link>
+                    </div>
+
+                    {absenGuruTerbaru.length === 0 ? (
+                        <div className="mt-4 rounded-xl border border-dashed border-[#DCE5E1] bg-[#F8FAF9] p-8 text-center text-xs text-slate-500">
+                            Belum ada rekaman presensi kamera live pegawai pada hari ini.
+                        </div>
+                    ) : (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                            {absenGuruTerbaru.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="rounded-xl border border-[#E5ECE9] bg-[#F8FAF9] p-4 flex items-center justify-between gap-3"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="truncate text-xs font-bold text-slate-900">
+                                            {item.nama}
+                                        </p>
+                                        <p className="truncate text-[11px] text-slate-500 mt-0.5">
+                                            {item.jabatan_label} • Masuk {item.jam_masuk}
+                                            {item.jam_pulang ? ` • Pulang ${item.jam_pulang}` : ''}
+                                        </p>
+                                        <p className="truncate font-mono text-[10px] text-slate-400 mt-1">
+                                            {item.keterangan}
+                                        </p>
+                                    </div>
+                                    <span
+                                        className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                                            item.status === 'tepat waktu'
+                                                ? 'bg-[#E6F5EE] text-[#0E7452]'
+                                                : 'bg-[#FEF3E2] text-[#B45309]'
+                                        }`}
+                                    >
+                                        {item.status === 'tepat waktu' ? 'Tepat Waktu' : 'Terlambat'}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -21,8 +21,10 @@ use Illuminate\Notifications\Notifiable;
     'jenis_pegawai',
     'wajib_ganti_password',
     'aktif',
+    'face_descriptor',
+    'face_registered_at',
 ])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'face_descriptor'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -40,6 +42,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'wajib_ganti_password' => 'boolean',
             'aktif' => 'boolean',
+            'face_descriptor' => 'array',
+            'face_registered_at' => 'datetime',
         ];
     }
 
@@ -71,6 +75,11 @@ class User extends Authenticatable
     public function absenGuru(): HasMany
     {
         return $this->hasMany(AbsenGuru::class, 'guru_id');
+    }
+
+    public function absenHarian(): HasMany
+    {
+        return $this->hasMany(AbsenHarian::class, 'user_id');
     }
 
     public function pengumuman(): HasMany

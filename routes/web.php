@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AbsenHarianController;
 use App\Http\Controllers\Admin\BeritaController;
 use App\Http\Controllers\Admin\GuruPiketController;
+use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\KelasController;
@@ -28,9 +30,22 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/sesi/{sesi}/generate-kode', [KodePenggantiController::class, 'generate'])->name('sesi.generate-kode');
     Route::post('/piket/klaim-kode', [KodePenggantiController::class, 'klaim'])->name('piket.klaim-kode');
+    Route::get('/absen-harian/{absenHarian}/foto', [AbsenHarianController::class, 'foto'])->name('absen-harian.foto');
+});
+
+Route::middleware(['auth', 'role:guru,guru_piket'])->group(function () {
+    Route::get('/absen-harian', [AbsenHarianController::class, 'index'])->name('absen-harian.index');
+    Route::post('/absen-harian', [AbsenHarianController::class, 'store'])->name('absen-harian.store');
+    Route::post('/absen-harian/pulang', [AbsenHarianController::class, 'pulang'])->name('absen-harian.pulang');
+    Route::post('/absen-harian/daftar-wajah', [AbsenHarianController::class, 'enrollFace'])->name('absen-harian.enroll-face');
+});
+
+Route::middleware(['auth', 'role:admin,kepsek'])->group(function () {
+    Route::get('/rekap-absen-harian', [AbsenHarianController::class, 'rekap'])->name('absen-harian.rekap');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
+    Route::delete('/rekap-absen-harian/{user}/reset-wajah', [AbsenHarianController::class, 'resetFace'])->name('absen-harian.reset-face');
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
@@ -77,6 +92,20 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/guru-piket', [GuruPiketController::class, 'index'])->name('admin.guru-piket.index');
     Route::post('/admin/guru-piket', [GuruPiketController::class, 'store'])->name('admin.guru-piket.store');
     Route::delete('/admin/guru-piket/{guruPiket}', [GuruPiketController::class, 'destroy'])->name('admin.guru-piket.destroy');
+
+    // Jadwal Mengajar & Versi Routes
+    Route::get('/jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+    Route::post('/jadwal/versi', [JadwalController::class, 'storeVersion'])->name('jadwal.versi.store');
+    Route::patch('/jadwal/versi/{jadwalVersi}', [JadwalController::class, 'updateVersion'])->name('jadwal.versi.update');
+    Route::patch('/jadwal/versi/{jadwalVersi}/publish', [JadwalController::class, 'publishVersion'])->name('jadwal.versi.publish');
+    Route::post('/jadwal/versi/{jadwalVersi}/copy', [JadwalController::class, 'copyVersion'])->name('jadwal.versi.copy');
+    Route::delete('/jadwal/versi/{jadwalVersi}', [JadwalController::class, 'destroyVersion'])->name('jadwal.versi.destroy');
+
+    Route::post('/jadwal/versi/{jadwalVersi}/slot', [JadwalController::class, 'storeSlot'])->name('jadwal.slot.store');
+    Route::delete('/jadwal/slot/{jadwalSlot}', [JadwalController::class, 'destroySlot'])->name('jadwal.slot.destroy');
+    Route::post('/jadwal/versi/{jadwalVersi}/bulk-copy', [JadwalController::class, 'bulkCopySlots'])->name('jadwal.slot.bulk-copy');
+
+    Route::post('/jadwal/generate-sesi', [JadwalController::class, 'generateSesi'])->name('jadwal.generate-sesi');
 });
 
 require __DIR__.'/auth.php';

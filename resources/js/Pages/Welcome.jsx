@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import ArticleImage from '@/Components/ArticleImage';
 
 // Default gallery data matching the screenshot
@@ -61,74 +61,40 @@ const formatDateIndo = (dateStr) => {
     }
 };
 
+const getCategoryColor = (kategori) => {
+    const colors = {
+        'Prestasi Siswa': 'bg-amber-100 text-amber-800 border border-amber-200',
+        'Prestasi': 'bg-amber-100 text-amber-800 border border-amber-200',
+        'Inovasi Sekolah': 'bg-blue-100 text-blue-800 border border-blue-200',
+        'Inovasi': 'bg-blue-100 text-blue-800 border border-blue-200',
+        'Agenda Akademik': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+        'Akademik': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+        'Kegiatan & Religi': 'bg-violet-100 text-violet-800 border border-violet-200',
+        'Kegiatan': 'bg-violet-100 text-violet-800 border border-violet-200',
+        'Religi': 'bg-violet-100 text-violet-800 border border-violet-200',
+        'Fasilitas': 'bg-slate-100 text-slate-800 border border-slate-200',
+        'Pengumuman': 'bg-rose-100 text-rose-800 border border-rose-200',
+        'Umum': 'bg-slate-100 text-slate-800 border border-slate-200',
+    };
+    return colors[kategori] || 'bg-slate-100 text-slate-800 border border-slate-200';
+};
+
 export default function Welcome({ auth, berita = [] }) {
     const [selectedCategory, setSelectedCategory] = useState('Semua');
     const [activeArticle, setActiveArticle] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [sliderScrollLeft, setSliderScrollLeft] = useState(0);
-    const [showArrows, setShowArrows] = useState(false);
-    const sliderRef = useRef(null);
+    const [visibleNewsCount, setVisibleNewsCount] = useState(4);
 
     // Published news from props - already sorted by backend: pinned first (pinned_at DESC), then by tanggal DESC
     const publishedNews = useMemo(() => {
         return Array.isArray(berita) ? berita : [];
     }, [berita]);
 
-    // Slider navigation - use scrollIntoView for precise snap alignment
-    const scrollSlider = (direction) => {
-        if (!sliderRef.current || publishedNews.length === 0) return;
-        
-        const currentScroll = sliderRef.current.scrollLeft;
-        const clientWidth = sliderRef.current.clientWidth;
-        const isMobile = clientWidth < 768;
-        
-        // Find the index of the currently centered/visible card
-        let currentIndex = 0;
-        if (isMobile) {
-            // On mobile, find card closest to center
-            const centerX = currentScroll + clientWidth / 2;
-            let minDist = Infinity;
-            publishedNews.forEach((article, i) => {
-                const card = document.getElementById(`article-${article.id}`);
-                if (card) {
-                    const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-                    const dist = Math.abs(cardCenter - centerX);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        currentIndex = i;
-                    }
-                }
-            });
-        } else {
-            // On desktop, find leftmost visible card
-            const cardWidth = 340; // card width + gap (320px + 20px gap)
-            currentIndex = Math.round(currentScroll / cardWidth);
-        }
-        
-        const nextIndex = Math.max(0, Math.min(publishedNews.length - 1, currentIndex + direction));
-        const targetCard = document.getElementById(`article-${publishedNews[nextIndex]?.id}`);
-        
-        if (targetCard) {
-            targetCard.scrollIntoView({
-                behavior: 'smooth',
-                inline: isMobile ? 'center' : 'start',
-                block: 'nearest'
-            });
-        }
-    };
+    const hasMoreNews = publishedNews.length > visibleNewsCount;
+    const displayNews = publishedNews.slice(0, visibleNewsCount);
 
-    const handleSliderScroll = () => {
-        if (!sliderRef.current) return;
-        const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
-        const maxScroll = scrollWidth - clientWidth;
-        setSliderScrollLeft(scrollLeft);
-        // Show arrows only if content overflows
-        setShowArrows(maxScroll > 10);
-    };
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'ArrowLeft') scrollSlider(-1);
-        if (e.key === 'ArrowRight') scrollSlider(1);
+    const loadMoreNews = () => {
+        setVisibleNewsCount(prev => Math.min(prev + 4, publishedNews.length));
     };
 
     const filteredGallery = useMemo(() => {
@@ -430,10 +396,10 @@ export default function Welcome({ auth, berita = [] }) {
             </section>
 
             {/* SCHOOL NEWS SECTION */}
-<section id="berita" className="py-20 bg-[#f7faf8] border-b border-gray-100">
+            <section id="berita" className="py-20 bg-[#f7faf8] border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Header with navigation arrows */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4 relative">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
                         <div>
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
@@ -447,139 +413,153 @@ export default function Welcome({ auth, berita = [] }) {
                             </p>
                         </div>
 
-                        {/* Navigation arrows in header */}
-                        {showArrows && (
-                            <div className="flex items-center gap-2 ml-auto">
-                                <button
-                                    type="button"
-                                    onClick={() => scrollSlider(-1)}
-                                    onKeyDown={handleKeyDown}
-                                    disabled={sliderScrollLeft <= 10}
-                                    aria-label="Berita sebelumnya"
-                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        <div className="flex items-center gap-3">
+                            {auth?.user?.role === 'admin' ? (
+                                <Link
+                                    href={route('admin.berita.index')}
+                                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 border border-emerald-300 rounded-full px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => scrollSlider(1)}
-                                    onKeyDown={handleKeyDown}
-                                    disabled={sliderRef.current && sliderScrollLeft >= sliderRef.current.scrollWidth - sliderRef.current.clientWidth - 10}
-                                    aria-label="Berita berikutnya"
-                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-md hover:bg-emerald-800 hover:text-white hover:border-emerald-800 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-800 disabled:hover:border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    <span>Kelola Berita (Admin)</span>
+                                    <span>&rarr;</span>
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/berita"
+                                    className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 hover:underline"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    <span>Arsip Berita & Warta Lengkap</span>
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
-                                </button>
-                            </div>
-                        )}
-
-                        {auth?.user?.role === 'admin' ? (
-                            <Link
-                                href={route('admin.berita.index')}
-                                className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 border border-emerald-300 rounded-full px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm"
-                            >
-                                <span>Kelola Berita (Admin)</span>
-                                <span>&rarr;</span>
-                            </Link>
-                        ) : (
-                            <a
-                                href="#berita"
-                                className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 hover:underline"
-                            >
-                                <span>Arsip Berita & Warta Lengkap</span>
-                                <span>&rarr;</span>
-                            </a>
-                        )}
+                                </Link>
+                            )}
+                        </div>
                     </div>
 
-                    {/* News Content - Single full-width slider */}
+                    {/* News Grid */}
                     {publishedNews.length === 0 ? (
                         <div className="p-12 text-center bg-white rounded-2xl border border-gray-200">
                             <p className="text-base font-semibold text-gray-700">Belum ada berita saat ini.</p>
                             <p className="text-sm text-gray-400 mt-1">Berita terbaru sekolah akan ditampilkan segera setelah dirilis oleh bagian humas.</p>
                         </div>
                     ) : (
-                        <div className="relative">
-                            {/* Slider container */}
-                            <div
-                                ref={sliderRef}
-                                onScroll={handleSliderScroll}
-                                onKeyDown={handleKeyDown}
-                                tabIndex={0}
-                                className="flex gap-4 overflow-x-auto scroll-snap-x scroll-snap-mandatory scroll-behavior-smooth pb-4 -ml-4 pl-4"
-                                style={{
-                                    scrollbarWidth: 'none',
-                                    msOverflowStyle: 'none',
-                                    WebkitOverflowScrolling: 'touch',
-                                    // Mobile: center snap with padding; Desktop: start snap
-                                    scrollPaddingInline: 'calc((100% - min(85vw, 340px)) / 2)',
-                                }}
-                            >
-                                {publishedNews.map((article, index) => (
-                                    <article
-                                        key={article.id}
-                                        id={`article-${article.id}`}
-                                        onClick={() => setActiveArticle(article)}
-                                        className="flex-shrink-0 w-[85vw] sm:w-[320px] scroll-snap-center sm:scroll-snap-start bg-white rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
-                                        style={{ 
-                                            borderColor: article.is_pinned ? '#006C4A' : '#e5e7eb',
-                                        }}
-                                    >
-                                        <div className="relative h-48 w-full overflow-hidden bg-gray-100 rounded-t-2xl">
-                                            <ArticleImage
-                                                src={
-                                                    article.gambar_path ||
-                                                    'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80'
-                                                }
-                                                alt={article.judul}
-                                                aspectRatio="16/9"
-                                                showBadge
-                                                badgeText={article.kategori}
-                                                enableLightbox
-                                            />
-                                            {/* Pin badge for pinned articles */}
-                                            {article.is_pinned && (
-                                                <div className="absolute top-3 right-3 z-20">
-                                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                                        </svg>
-                                                        Disematkan
-                                                    </span>
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-6">
+                                {displayNews.map((article, index) => {
+                                    const isFeatured = index === 0 && displayNews.length >= 3;
+                                    const categoryColor = getCategoryColor(article.kategori);
+                                    const imageUrl = article.gambar_path || '';
+                                    const placeholderUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgdmlld0JveD0iMCAwIDQwMCAyNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBmaWxsPSIjRThFRUZGIi8+CjxwYXRoIGQ9Ik0yMDAgMTI1QzIyMi4wOTEgMTI1IDI0MCAxMDcuMDkxIDI0MCA4NUMyNDAgNjIuOTA5IDIyMi4wOTEgNDUgMjAwIDQ1QzE3Ny45MDkgNDUgMTYwIDYyLjkwOSAxNjAgODVDMTYwIDEwNy4wOTEgMTc3LjkwOSAxMjUgMjAwIDEyNVoiIGZpbGw9IiNDNUNFRDMiLz4KPHBhdGggZD0iTTIwMCAxNDVDMjE2LjU2OSAxNDUgMjMwIDEzMS41NjkgMjMwIDExNUMyMzAgOTguNDMxIDIxNi41NjkgODUgMjAwIDg1QzE4My40MzEgODUgMTcwIDk4LjQzMSAxNzAgMTE1QzE3MCAxMzEuNTY5IDE4My40MzEgMTQ1IDIwMCAxNDVaIiBmaWxsPSIjQzVDRUQzIi8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTg1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlDOTM5OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+U01QTiAyIFNvcmVhbmc8L3RleHQ+Cjwvc3ZnPgo=';
+                                    const displayImageUrl = imageUrl || placeholderUrl;
+
+                                    return (
+                                        <article
+                                            key={article.id}
+                                            className={`group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 overflow-hidden flex flex-col transition-all duration-200 ease-out motion-reduce:transition-none motion-reduce:hover:transform-none ${
+                                                isFeatured ? 'lg:col-span-7' : 'lg:col-span-5'
+                                            }`}
+                                        >
+                                            <Link
+                                                href={`/berita/${article.slug || article.id}`}
+                                                className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 rounded-2xl h-full"
+                                                aria-label={`Baca selengkapnya: ${article.judul}`}
+                                            >
+                                                {/* Image Container - Fixed 16:10 aspect ratio */}
+                                                <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/10' }}>
+                                                    {/* Blurred background layer - same image, blurred */}
+                                                    <img
+                                                        src={displayImageUrl}
+                                                        alt=""
+                                                        aria-hidden="true"
+                                                        className="absolute inset-0 w-full h-full object-cover object-center z-0"
+                                                        style={{
+                                                            filter: 'blur(24px)',
+                                                            transform: 'scale(1.15)',
+                                                            opacity: 0.6,
+                                                        }}
+                                                    />
+                                                    {/* Foreground image - fully visible, not cropped */}
+                                                    <img
+                                                        src={displayImageUrl}
+                                                        alt={article.judul ? `${article.judul} - ilustrasi berita` : 'Ilustrasi berita sekolah'}
+                                                        loading="lazy"
+                                                        className="relative z-10 w-full h-full object-contain object-center transition-transform duration-300 ease-out group-hover:scale-105 group-focus-visible:scale-105 motion-reduce:transition-none motion-reduce:group-hover:transform-none"
+                                                        onError={(e) => {
+                                                            if (e.target.src !== placeholderUrl) {
+                                                                e.target.src = placeholderUrl;
+                                                            }
+                                                        }}
+                                                    />
+                                                    {/* Category Badge */}
+                                                    <div className="absolute top-3 left-3 z-20">
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider shadow-sm ${categoryColor}`}>
+                                                            {article.kategori || 'Umum'}
+                                                        </span>
+                                                    </div>
+                                                    {/* Pinned Badge */}
+                                                    {article.is_pinned && (
+                                                        <span className="absolute top-3 right-3 z-20 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-600 text-white uppercase tracking-wider shadow-sm">
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                            </svg>
+                                                            Disematkan
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div className="p-5 flex-1 flex flex-col justify-between">
-                                            <div>
-                                                <div className="flex items-center justify-between text-xs mb-1.5">
-                                                    <span className="font-bold text-emerald-700 uppercase tracking-wider text-[11px]">
-                                                        {article.kategori}
-                                                    </span>
-                                                    <span className="text-gray-400">
-                                                        {formatDateIndo(article.tanggal)}
-                                                    </span>
+
+                                                {/* Content Container */}
+                                                <div className="p-5 flex flex-col flex-1 justify-between min-h-[160px] lg:min-h-[140px]">
+                                                    <div className="space-y-3">
+                                                        {/* Date row */}
+                                                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                                                            <time dateTime={article.tanggal} className="font-medium text-slate-600 whitespace-nowrap">
+                                                                {formatDateIndo(article.tanggal)}
+                                                            </time>
+                                                        </div>
+
+                                                        {/* Title */}
+                                                        <h3 className="font-bold text-[#111C2D] leading-snug line-clamp-2 group-hover:text-[#006C4A] transition-colors duration-150 motion-reduce:transition-none text-base sm:text-lg overflow-wrap-anywhere">
+                                                            {article.judul}
+                                                        </h3>
+
+                                                        {/* Summary - longer for featured, 3 lines for regular */}
+                                                        <p className="text-[14px] leading-relaxed text-[#3F463F] line-clamp-3">
+                                                            {article.ringkasan || (article.isi ? article.isi.substring(0, isFeatured ? 280 : 160) + '...' : 'Tidak ada ringkasan')}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Footer - Read more link */}
+                                                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                                        <span className="text-sm font-semibold text-[#006C4A] group-hover:underline transition-colors duration-150 motion-reduce:transition-none inline-flex items-center gap-1">
+                                                            Selengkapnya
+                                                            <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <h4 className="text-base font-bold text-gray-900 leading-snug hover:text-emerald-700 transition line-clamp-2">
-                                                    {article.judul}
-                                                </h4>
-                                                <p className="text-xs text-gray-500 mt-2 line-clamp-3 leading-relaxed">
-                                                    {article.ringkasan || article.isi}
-                                                </p>
-                                            </div>
-                                            <div className="mt-4 pt-2 flex justify-between items-center text-xs border-t border-gray-100">
-                                                <span className="font-semibold text-emerald-700 inline-flex items-center gap-1 hover:underline">
-                                                    Selengkapnya &rarr;
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </article>
-                                ))}
+                                            </Link>
+                                        </article>
+                                    );
+                                })}
                             </div>
-                        </div>
+
+                            {/* Load More Button */}
+                            {hasMoreNews && (
+                                <div className="mt-8 text-center">
+                                    <button
+                                        onClick={loadMoreNews}
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-emerald-200 text-emerald-700 font-semibold text-sm rounded-full hover:bg-emerald-50 hover:border-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 transition-all duration-200 motion-reduce:transition-none shadow-sm"
+                                        aria-label={`Muat ${Math.min(4, publishedNews.length - visibleNewsCount)} berita lainnya`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182L13.536 5.414a2.003 2.003 0 00-2.828 0L5.518 9.05c-1.172.88-1.172 2.304 0 3.182l.879.659" />
+                                        </svg>
+                                        Muat Lebih Banyak
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </section>
