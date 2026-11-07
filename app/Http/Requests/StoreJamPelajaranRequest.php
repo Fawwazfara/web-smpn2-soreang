@@ -15,9 +15,16 @@ class StoreJamPelajaranRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $kelompokHari = $this->input('kelompok_hari');
+        $defaultHari = ($kelompokHari === 'jumat') ? 5 : 1;
+
         $this->merge([
             'mulai' => $this->input('mulai') ?? $this->input('waktu_mulai'),
             'selesai' => $this->input('selesai') ?? $this->input('waktu_selesai'),
+            'sesi' => $this->input('sesi') ?? 'pagi',
+            'hari' => $this->input('hari') ?? $defaultHari,
+            'jenis_kegiatan' => $this->input('jenis_kegiatan') ?? 'kbm',
+            'kelompok_hari' => $kelompokHari ?? ($this->input('hari') == 5 ? 'jumat' : 'senin-kamis'),
         ]);
     }
 
@@ -26,6 +33,7 @@ class StoreJamPelajaranRequest extends FormRequest
         return [
             'sesi' => ['required', 'string', Rule::in(['pagi', 'siang'])],
             'hari' => ['required', 'integer', 'min:1', 'max:5'],
+            'kelompok_hari' => ['nullable', 'string', Rule::in(['senin-kamis', 'jumat'])],
             'jam_ke' => [
                 'required',
                 'integer',
