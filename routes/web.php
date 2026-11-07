@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbsenHarianController;
 use App\Http\Controllers\Admin\BeritaController;
+use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\GuruPiketController;
 use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\DashboardController;
@@ -85,6 +86,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/time-slots', [JamPelajaranController::class, 'store'])->name('time-slots.store');
     Route::patch('/time-slots/{jamPelajaran}', [JamPelajaranController::class, 'update'])->name('time-slots.update');
     Route::delete('/time-slots/{jamPelajaran}', [JamPelajaranController::class, 'destroy'])->name('time-slots.destroy');
+
+    Route::get('/admin/siswa', [SiswaController::class, 'index'])->name('admin.siswa.index');
+    Route::post('/admin/siswa', [SiswaController::class, 'store'])->name('admin.siswa.store');
+    Route::patch('/admin/siswa/{siswa}', [SiswaController::class, 'update'])->name('admin.siswa.update');
+    Route::patch('/admin/siswa/{siswa}/toggle-status', [SiswaController::class, 'toggleStatus'])->name('admin.siswa.toggle-status');
+    Route::delete('/admin/siswa/{siswa}', [SiswaController::class, 'destroy'])->name('admin.siswa.destroy');
 
     Route::get('/admin/berita', [BeritaController::class, 'index'])->name('admin.berita.index');
     Route::post('/admin/berita', [BeritaController::class, 'store'])->name('admin.berita.store');
