@@ -83,6 +83,11 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 ## Konvensi
 - Branch: `feat/...`, `fix/...`, `chore/...`. `main` dilindungi, PR wajib 1 review.
 - Commit: `feat:`, `fix:`, `chore:`.
+- **Wajib `git pull origin main` sebelum push & buka PR**:
+  - Sebelum push atau membuka Pull Request ke `main`, **WAJIB** jalankan `git pull origin main` di branch kerja lokal.
+  - Selesaikan merge conflict jika ada (terutama di `routes/web.php` dan seeder).
+  - Pastikan semua test lolos (`php artisan test`) sebelum push.
+  - Dilarang membuat PR dalam kondisi branch tertinggal dari `main` atau masih ada conflict, karena akan menyebabkan pipeline CI/Jenkins merah (`This commit cannot be built`).
 
 ## Progress & laporan
 - Status: **prototype**. Skema dasar sudah tersedia lewat migrasi, termasuk `absen_harian`, `kode_pengganti`, dan `notifikasi_wa`. Modul yang sudah ada: autentikasi + manajemen pengguna dasar oleh admin. Fitur absensi belum dibuat.
