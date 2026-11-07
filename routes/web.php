@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [LandingPageController::class, 'index'])->name('welcome');
+Route::get('/profil', [LandingPageController::class, 'profil'])->name('profil');
+Route::get('/berita', [LandingPageController::class, 'berita'])->name('berita');
+Route::get('/galeri', [LandingPageController::class, 'galeri'])->name('galeri');
+Route::get('/kontak', [LandingPageController::class, 'kontak'])->name('kontak');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])

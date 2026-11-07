@@ -586,7 +586,7 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                     <span className="text-sm font-medium text-gray-700">Sematkan di awal (pin)</span>
                                 </label>
                                 <p className="mt-1 text-xs text-gray-500 italic">
-                                    Berita yang disematkan selalu muncul paling awal di slider beranda. Maksimal 3 berita.
+                                    Berita yang disematkan selalu muncul paling awal di slider beranda. Maksimal 4 berita.
                                 </p>
                                 <InputError message={errors.is_pinned} className="mt-1" />
                             </div>
