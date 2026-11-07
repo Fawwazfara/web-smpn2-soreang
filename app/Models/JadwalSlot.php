@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Table('jadwal_slot')]
-#[Fillable(['versi_id', 'hari', 'jam_pelajaran_id', 'kelas_id', 'mapel_id', 'guru_id'])]
+#[Fillable(['versi_id', 'hari', 'jam_pelajaran_id', 'kelas_id', 'mapel_id', 'guru_id', 'durasi'])]
 class JadwalSlot extends Model
 {
     protected function casts(): array

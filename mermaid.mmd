@@ -27,6 +27,8 @@ erDiagram
         string jenis_pegawai "guru atau tenaga_kependidikan (untuk role guru)"
         boolean wajib_ganti_password
         boolean aktif
+        text face_descriptor "vektor biometrik wajah 128-D JSON, boleh kosong"
+        datetime face_registered_at "waktu pendaftaran wajah pertama kali, boleh kosong"
     }
 
     GURU_PIKET {
@@ -93,6 +95,7 @@ erDiagram
         bigint kelas_id FK
         bigint mapel_id FK
         bigint guru_id FK
+        int durasi "durasi jam pelajaran (1..4)"
     }
 
     HARI_LIBUR {
@@ -119,6 +122,7 @@ erDiagram
         bigint user_id FK
         date tanggal
         datetime waktu_masuk "waktu server"
+        datetime waktu_pulang "waktu pulang server, boleh kosong"
         datetime waktu_ambil "waktu jepret di perangkat"
         string foto_path
         string sumber "selalu 'live'"

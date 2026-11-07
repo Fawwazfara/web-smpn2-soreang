@@ -8,17 +8,11 @@ use Illuminate\Validation\Rule;
 
 class StoreJamPelajaranRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Prepare the data for validation.
-     */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -27,37 +21,33 @@ class StoreJamPelajaranRequest extends FormRequest
         ]);
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, mixed>
-     */
     public function rules(): array
     {
         return [
+            'sesi' => ['required', 'string', Rule::in(['pagi', 'siang'])],
+            'hari' => ['required', 'integer', 'min:1', 'max:5'],
             'jam_ke' => [
                 'required',
                 'integer',
                 'min:1',
                 'max:20',
                 Rule::unique('jam_pelajaran')->where(fn ($q) => $q
-                    ->where('kelompok_hari', $this->input('kelompok_hari'))),
+                    ->where('sesi', $this->input('sesi'))
+                    ->where('hari', $this->input('hari'))),
             ],
             'mulai' => ['required', 'date_format:H:i'],
             'selesai' => ['required', 'date_format:H:i'],
-            'kelompok_hari' => ['required', 'string', Rule::in(['senin-kamis', 'jumat'])],
+            'jenis_kegiatan' => ['required', 'string', Rule::in(['kbm', 'upacara', 'mengaji', 'dhuha', 'istirahat'])],
         ];
     }
 
-    /**
-     * Configure the validator instance.
-     */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
             $mulai = $this->input('mulai');
             $selesai = $this->input('selesai');
-            $kelompokHari = $this->input('kelompok_hari');
+            $sesi = $this->input('sesi');
+            $hari = $this->input('hari');
 
             if ($mulai && $selesai) {
                 if ($selesai <= $mulai) {
@@ -65,9 +55,10 @@ class StoreJamPelajaranRequest extends FormRequest
                     return;
                 }
 
-                if ($kelompokHari) {
+                if ($sesi && $hari) {
                     $overlap = JamPelajaran::query()
-                        ->where('kelompok_hari', $kelompokHari)
+                        ->where('sesi', $sesi)
+                        ->where('hari', $hari)
                         ->where(function ($q) use ($mulai, $selesai) {
                             $q->where('mulai', '<', $selesai)
                               ->where('selesai', '>', $mulai);
@@ -82,38 +73,34 @@ class StoreJamPelajaranRequest extends FormRequest
         });
     }
 
-    /**
-     * Get custom attributes for validator errors.
-     *
-     * @return array<string, string>
-     */
     public function attributes(): array
     {
         return [
+            'sesi' => 'sesi',
+            'hari' => 'hari',
             'jam_ke' => 'jam ke',
             'mulai' => 'waktu mulai',
             'selesai' => 'waktu selesai',
-            'kelompok_hari' => 'kelompok hari',
+            'jenis_kegiatan' => 'jenis kegiatan',
         ];
     }
 
-    /**
-     * Get the error messages for the defined validation rules.
-     *
-     * @return array<string, string>
-     */
     public function messages(): array
     {
         return [
-            'jam_ke.unique' => 'Nomor jam ke tersebut sudah ada pada kelompok hari yang dipilih.',
+            'jam_ke.unique' => 'Nomor jam ke tersebut sudah ada pada sesi dan hari yang dipilih.',
             'jam_ke.required' => 'Nomor jam pelajaran wajib diisi.',
             'mulai.required' => 'Waktu mulai wajib diisi.',
             'mulai.date_format' => 'Format waktu mulai harus JJ:MM (contoh: 07:00).',
             'selesai.required' => 'Waktu selesai wajib diisi.',
             'selesai.date_format' => 'Format waktu selesai harus JJ:MM (contoh: 07:40).',
-            'kelompok_hari.required' => 'Kelompok hari wajib dipilih.',
-            'kelompok_hari.in' => 'Kelompok hari harus bernilai senin-kamis atau jumat.',
+            'sesi.required' => 'Sesi wajib dipilih.',
+            'sesi.in' => 'Sesi harus pagi atau siang.',
+            'hari.required' => 'Hari wajib dipilih.',
+            'hari.min' => 'Hari minimal 1 (Senin).',
+            'hari.max' => 'Hari maksimal 5 (Jumat).',
+            'jenis_kegiatan.required' => 'Jenis kegiatan wajib dipilih.',
+            'jenis_kegiatan.in' => 'Jenis kegiatan tidak valid.',
         ];
     }
 }
-

@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AbsenHarianController;
 use App\Http\Controllers\Admin\BeritaController;
 use App\Http\Controllers\Admin\SiswaController;
+use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\KelasController;
@@ -15,6 +17,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [LandingPageController::class, 'index'])->name('welcome');
+Route::get('/profil', [LandingPageController::class, 'profil'])->name('profil');
+Route::get('/berita', [LandingPageController::class, 'berita'])->name('berita');
+Route::get('/galeri', [LandingPageController::class, 'galeri'])->name('galeri');
+Route::get('/kontak', [LandingPageController::class, 'kontak'])->name('kontak');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -24,9 +30,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/absen-harian/{absenHarian}/foto', [AbsenHarianController::class, 'foto'])->name('absen-harian.foto');
+});
+
+Route::middleware(['auth', 'role:guru,guru_piket'])->group(function () {
+    Route::get('/absen-harian', [AbsenHarianController::class, 'index'])->name('absen-harian.index');
+    Route::post('/absen-harian', [AbsenHarianController::class, 'store'])->name('absen-harian.store');
+    Route::post('/absen-harian/pulang', [AbsenHarianController::class, 'pulang'])->name('absen-harian.pulang');
+    Route::post('/absen-harian/daftar-wajah', [AbsenHarianController::class, 'enrollFace'])->name('absen-harian.enroll-face');
+});
+
+Route::middleware(['auth', 'role:admin,kepsek'])->group(function () {
+    Route::get('/rekap-absen-harian', [AbsenHarianController::class, 'rekap'])->name('absen-harian.rekap');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
+    Route::delete('/rekap-absen-harian/{user}/reset-wajah', [AbsenHarianController::class, 'resetFace'])->name('absen-harian.reset-face');
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
@@ -75,6 +95,20 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::patch('/admin/berita/{berita}', [BeritaController::class, 'update']);
     Route::patch('/admin/berita/{berita}/toggle-pin', [BeritaController::class, 'togglePin'])->name('admin.berita.toggle-pin');
     Route::delete('/admin/berita/{berita}', [BeritaController::class, 'destroy'])->name('admin.berita.destroy');
+
+    // Jadwal Mengajar & Versi Routes
+    Route::get('/jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+    Route::post('/jadwal/versi', [JadwalController::class, 'storeVersion'])->name('jadwal.versi.store');
+    Route::patch('/jadwal/versi/{jadwalVersi}', [JadwalController::class, 'updateVersion'])->name('jadwal.versi.update');
+    Route::patch('/jadwal/versi/{jadwalVersi}/publish', [JadwalController::class, 'publishVersion'])->name('jadwal.versi.publish');
+    Route::post('/jadwal/versi/{jadwalVersi}/copy', [JadwalController::class, 'copyVersion'])->name('jadwal.versi.copy');
+    Route::delete('/jadwal/versi/{jadwalVersi}', [JadwalController::class, 'destroyVersion'])->name('jadwal.versi.destroy');
+
+    Route::post('/jadwal/versi/{jadwalVersi}/slot', [JadwalController::class, 'storeSlot'])->name('jadwal.slot.store');
+    Route::delete('/jadwal/slot/{jadwalSlot}', [JadwalController::class, 'destroySlot'])->name('jadwal.slot.destroy');
+    Route::post('/jadwal/versi/{jadwalVersi}/bulk-copy', [JadwalController::class, 'bulkCopySlots'])->name('jadwal.slot.bulk-copy');
+
+    Route::post('/jadwal/generate-sesi', [JadwalController::class, 'generateSesi'])->name('jadwal.generate-sesi');
 });
 
 require __DIR__.'/auth.php';

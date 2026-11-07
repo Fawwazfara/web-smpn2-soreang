@@ -41,7 +41,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'ATTENDANCE',
             items: [
-                { label: 'Presensi Guru (Geofence)', route: null, icon: 'map-pin' },
+                { label: 'Presensi Guru (Geofence)', route: 'absen-harian.rekap', icon: 'map-pin' },
                 { label: 'Presensi Siswa', route: null, icon: 'checklist' },
                 { label: 'Rekap & Laporan', route: null, icon: 'doc-fold' },
             ],
@@ -49,7 +49,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'JADWAL & SESI',
             items: [
-                { label: 'Matriks Jadwal KBM', route: null, icon: 'calendar-grid' },
+                { label: 'Matriks Jadwal KBM', route: 'jadwal.index', icon: 'calendar-grid' },
                 { label: 'Guru Piket & Pengganti', route: 'users.index', icon: 'portrait-badge', routeParams: { role: 'guru_piket' }, exactRoleMatch: 'guru_piket' },
             ],
         },
@@ -59,7 +59,7 @@ export const SIDEBAR_NAV = {
             title: null,
             items: [
                 { label: 'Dashboard Guru', route: 'dashboard', icon: 'layout-split' },
-                { label: 'Presensi Mandiri', route: null, icon: 'portrait-badge' },
+                { label: 'Presensi Mandiri', route: 'absen-harian.index', icon: 'portrait-badge' },
                 { label: 'Presensi Siswa / KBM', route: null, icon: 'checklist' },
                 { label: 'Jadwal Mengajar', route: null, icon: 'calendar-grid' },
                 { label: 'Jurnal Kelas', route: null, icon: 'open-book' },
@@ -74,7 +74,7 @@ export const SIDEBAR_NAV = {
                 { label: 'Dashboard Piket', route: 'dashboard', icon: 'layout-split' },
                 { label: 'Buka Sesi Pengganti', route: null, icon: 'key' },
                 { label: 'Monitor Kelas Terkunci', route: null, icon: 'lock' },
-                { label: 'Presensi Mandiri', route: null, icon: 'portrait-badge' },
+                { label: 'Presensi Mandiri', route: 'absen-harian.index', icon: 'portrait-badge' },
                 { label: 'Jadwal Piket', route: null, icon: 'calendar-grid' },
                 { label: 'Jurnal Kelas', route: null, icon: 'open-book' },
             ],
@@ -98,6 +98,7 @@ export const SIDEBAR_NAV = {
             title: 'ATTENDANCE',
             items: [
                 { label: 'Presensi Guru', route: null, icon: 'map-pin' },
+                { label: 'Presensi Guru (Geofence)', route: 'absen-harian.rekap', icon: 'map-pin' },
                 { label: 'Presensi Siswa', route: null, icon: 'checklist' },
                 { label: 'Rekap & Laporan', route: null, icon: 'doc-fold' },
             ],
@@ -105,7 +106,7 @@ export const SIDEBAR_NAV = {
         {
             title: 'JADWAL & SESI',
             items: [
-                { label: 'Matriks Jadwal KBM', route: null, icon: 'calendar-grid' },
+                { label: 'Matriks Jadwal KBM', route: 'jadwal.index', icon: 'calendar-grid' },
                 { label: 'Guru Piket & Pengganti', route: null, icon: 'portrait-badge' },
             ],
         },

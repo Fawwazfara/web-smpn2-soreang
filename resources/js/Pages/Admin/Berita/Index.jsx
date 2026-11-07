@@ -324,7 +324,7 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                         <th className="px-6 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-emerald-950">
                                             Pin
                                         </th>
-                                        <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-emerald-950">
+                                        <th className="sticky right-0 z-20 bg-[#F3F7F5] px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-emerald-950 shadow-[-8px_0_10px_-8px_rgba(15,56,42,0.18)]">
                                             Aksi
                                         </th>
                                     </tr>
@@ -414,7 +414,7 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <td className="sticky right-0 z-10 bg-white px-4 py-4 whitespace-nowrap text-right text-sm font-medium shadow-[-8px_0_10px_-8px_rgba(15,56,42,0.14)]">
                                                     <div className="flex items-center justify-end gap-2">
                                                         {/* Quick Pin/Unpin Button */}
                                                         <button
@@ -586,7 +586,7 @@ export default function Index({ berita, filters, kategoriList, flash }) {
                                     <span className="text-sm font-medium text-gray-700">Sematkan di awal (pin)</span>
                                 </label>
                                 <p className="mt-1 text-xs text-gray-500 italic">
-                                    Berita yang disematkan selalu muncul paling awal di slider beranda. Maksimal 3 berita.
+                                    Berita yang disematkan selalu muncul paling awal di slider beranda. Maksimal 4 berita.
                                 </p>
                                 <InputError message={errors.is_pinned} className="mt-1" />
                             </div>
