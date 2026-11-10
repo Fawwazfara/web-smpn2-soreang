@@ -60,7 +60,7 @@ export const SIDEBAR_NAV = {
             items: [
                 { label: 'Dashboard Guru', route: 'dashboard', icon: 'layout-split' },
                 { label: 'Presensi Mandiri', route: 'absen-harian.index', icon: 'portrait-badge' },
-                { label: 'Presensi Siswa / KBM', route: null, icon: 'checklist' },
+                { label: 'Presensi Siswa / KBM', route: 'guru.absen-sesi.index', icon: 'checklist' },
                 { label: 'Jadwal Mengajar', route: null, icon: 'calendar-grid' },
                 { label: 'Jurnal Kelas', route: null, icon: 'open-book' },
                 { label: 'Nilai & Rapor', route: null, icon: 'star' },
