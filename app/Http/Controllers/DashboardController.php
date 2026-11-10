@@ -6,6 +6,7 @@ use App\Models\AbsenHarian;
 use App\Models\GuruPiket;
 use App\Models\HariLibur;
 use App\Models\JadwalSlot;
+use App\Models\JamPelajaran;
 use App\Models\Kelas;
 use App\Models\Sesi;
 use App\Models\Siswa;
@@ -152,19 +153,63 @@ class DashboardController extends Controller
                 ]);
             }
 
+            $todayIso = $now->dayOfWeekIso;
+            $sesiBundle = $this->buildSesiHariIni($todayStr, $todayIso, $tahunAjaranAktif, $now, $tz);
+            $sesiHariIni = $sesiBundle['list'];
+            $sesiStats = $sesiBundle['stats'];
+
+            $daftarAbsenHariIni = $pegawaiWajib->map(function (User $u) use ($absenByUser, $tz) {
+                /** @var AbsenHarian|null $rec */
+                $rec = $absenByUser->get($u->id);
+                $waktuMasuk = $rec?->waktu_masuk ? Carbon::parse($rec->waktu_masuk)->setTimezone($tz) : null;
+                $waktuPulang = $rec?->waktu_pulang ? Carbon::parse($rec->waktu_pulang)->setTimezone($tz) : null;
+                $waktuAmbil = $rec?->waktu_ambil ? Carbon::parse($rec->waktu_ambil)->setTimezone($tz) : null;
+                $jabatan = $u->role === 'guru_piket'
+                    ? 'Guru Piket'
+                    : ($u->jenis_pegawai === 'tenaga_kependidikan' ? 'Tenaga Kependidikan' : 'Guru Pengajar');
+
+                return [
+                    'id' => $u->id,
+                    'absen_id' => $rec?->id,
+                    'nama' => $u->nama,
+                    'username' => $u->username,
+                    'role' => $u->role,
+                    'jenis_pegawai' => $u->jenis_pegawai,
+                    'jabatan_label' => $jabatan,
+                    'no_wa' => $u->no_wa,
+                    'sudah_absen' => $rec !== null,
+                    'status' => $rec ? $rec->status : 'belum_absen',
+                    'jam_masuk' => $waktuMasuk ? $waktuMasuk->format('H:i').' WIB' : '-',
+                    'jam_pulang' => $waktuPulang ? $waktuPulang->format('H:i').' WIB' : null,
+                    'waktu_ambil' => $waktuAmbil ? $waktuAmbil->format('H:i:s').' WIB' : null,
+                    'keterangan' => $rec?->keterangan ?: ($rec ? 'Kamera Live Terverifikasi' : 'Belum melakukan presensi hari ini'),
+                    'foto_url' => $rec?->foto_path ? route('absen-harian.foto', $rec->id) : null,
+                    'ip_address' => $rec?->ip_address,
+                    'user_agent' => $rec?->user_agent,
+                    'sumber' => $rec?->sumber,
+                ];
+            });
+
             return Inertia::render('Kepsek/Dashboard', [
                 'stats' => array_merge([
                     'total_guru' => User::where('role', 'guru')->count(),
                     'total_guru_aktif' => User::where('role', 'guru')->where('aktif', true)->count(),
-                    'total_guru_piket' => User::where('role', 'guru_piket')->count(),
+                    'total_guru_pengajar' => User::where('role', 'guru')->where('jenis_pegawai', 'guru')->count(),
                     'total_tendik' => User::where('role', 'guru')->where('jenis_pegawai', 'tenaga_kependidikan')->count(),
+                    'total_guru_piket' => User::where('role', 'guru_piket')->count(),
+                    'total_kepsek' => User::where('role', 'kepsek')->count(),
                     'total_nonaktif' => User::where('role', '!=', 'admin')->where('aktif', false)->count(),
                     'total_siswa' => Siswa::count(),
                     'total_kelas' => $kelasAktifList->count() ?: Kelas::count(),
                     'tahun_ajaran_aktif' => $tahunAjaranAktif,
-                ], $sharedAttendanceStats),
+                ], $sharedAttendanceStats, $sesiStats),
                 'kelasList' => $kelasAktifList,
                 'absenGuruTerbaru' => $absenGuruTerbaru,
+                'daftarAbsenHariIni' => $daftarAbsenHariIni,
+                'sesiHariIni' => $sesiHariIni,
+                'sesiStats' => $sesiStats,
+                'piketHariIni' => $piketAktif,
+                'aturanJam' => $aturanJam,
             ]);
         }
 
@@ -507,5 +552,154 @@ class DashboardController extends Controller
             'terlambat' => $terlambat,
             'persentase_kehadiran' => number_format($persentase, 1, '.', ''),
         ];
+    }
+
+    /**
+     * Build today's active sessions combined with active slots for monitoring.
+     *
+     * @return array{list: \Illuminate\Support\Collection, stats: array<string, int>}
+     */
+    protected function buildSesiHariIni(
+        string $todayDate,
+        int $todayIso,
+        ?TahunAjaran $tahunAjaranAktif,
+        Carbon $now,
+        string $tz
+    ): array {
+        $sesiHariIni = Sesi::query()
+            ->whereDate('tanggal', $todayDate)
+            ->when($tahunAjaranAktif, function ($q) use ($tahunAjaranAktif) {
+                $q->whereHas('kelas', fn ($k) => $k->where('tahun_ajaran_id', $tahunAjaranAktif->id));
+            })
+            ->with([
+                'kelas:id,nama,tingkat',
+                'jamPelajaran:id,jam_ke,mulai,selesai',
+                'mapel:id,kode,nama',
+                'guru:id,nama,username',
+                'guruPengganti:id,nama,username',
+                'kodePengganti',
+            ])
+            ->get();
+
+        $existingSlotIds = $sesiHariIni->pluck('slot_id')->filter()->all();
+        $existingClassJamPairs = $sesiHariIni->map(fn ($s) => $s->kelas_id.'_'.$s->jam_pelajaran_id)->all();
+
+        $slotsHariIni = JadwalSlot::query()
+            ->where('hari', $todayIso)
+            ->when($tahunAjaranAktif, function ($q) use ($tahunAjaranAktif) {
+                $q->whereHas('kelas', fn ($k) => $k->where('tahun_ajaran_id', $tahunAjaranAktif->id));
+            })
+            ->whereHas('versi', fn ($v) => $v->where('status', 'aktif'))
+            ->with([
+                'kelas:id,nama,tingkat',
+                'jamPelajaran:id,jam_ke,mulai,selesai',
+                'mapel:id,kode,nama',
+                'guru:id,nama,username',
+            ])
+            ->get();
+
+        $list = collect();
+
+        foreach ($sesiHariIni as $s) {
+            $jam = $s->jamPelajaran;
+            $statusPelaksanaan = $this->determineStatusPelaksanaan($s->status, $jam, $todayDate, $now, $tz);
+            $isDigantikan = $s->guru_pengganti_id !== null;
+
+            $list->push([
+                'id' => $s->id,
+                'slot_id' => $s->slot_id,
+                'source' => 'sesi',
+                'tanggal' => $s->tanggal ? Carbon::parse($s->tanggal, $tz)->toDateString() : $todayDate,
+                'kelas' => $s->kelas,
+                'jam_pelajaran' => $jam,
+                'mapel' => $s->mapel,
+                'guru' => $s->guru,
+                'guru_pengganti' => $s->guruPengganti,
+                'is_digantikan' => $isDigantikan,
+                'status_pelaksanaan' => $statusPelaksanaan,
+                'status' => $s->status,
+                'alasan' => $s->alasan,
+            ]);
+        }
+
+        foreach ($slotsHariIni as $slot) {
+            $pair = $slot->kelas_id.'_'.$slot->jam_pelajaran_id;
+            if (in_array($slot->id, $existingSlotIds, true) || in_array($pair, $existingClassJamPairs, true)) {
+                continue;
+            }
+
+            $jam = $slot->jamPelajaran;
+            $statusPelaksanaan = $this->determineStatusPelaksanaan('terjadwal', $jam, $todayDate, $now, $tz);
+
+            $list->push([
+                'id' => null,
+                'slot_id' => $slot->id,
+                'source' => 'slot',
+                'tanggal' => $todayDate,
+                'kelas' => $slot->kelas,
+                'jam_pelajaran' => $jam,
+                'mapel' => $slot->mapel,
+                'guru' => $slot->guru,
+                'guru_pengganti' => null,
+                'is_digantikan' => false,
+                'status_pelaksanaan' => $statusPelaksanaan,
+                'status' => 'terjadwal',
+                'alasan' => null,
+            ]);
+        }
+
+        $sorted = $list->sortBy([
+            fn ($a, $b) => ($a['jam_pelajaran']->jam_ke ?? 0) <=> ($b['jam_pelajaran']->jam_ke ?? 0),
+            fn ($a, $b) => ($a['kelas']->tingkat ?? 0) <=> ($b['kelas']->tingkat ?? 0),
+            fn ($a, $b) => ($a['kelas']->nama ?? '') <=> ($b['kelas']->nama ?? ''),
+        ])->values();
+
+        $stats = [
+            'total_sesi' => $sorted->count(),
+            'sesi_berlangsung' => $sorted->where('status_pelaksanaan', 'berlangsung')->count(),
+            'sesi_selesai' => $sorted->where('status_pelaksanaan', 'selesai')->count(),
+            'sesi_terjadwal' => $sorted->where('status_pelaksanaan', 'terjadwal')->count(),
+            'sesi_digantikan' => $sorted->where('is_digantikan', true)->count(),
+        ];
+
+        return [
+            'list' => $sorted,
+            'stats' => $stats,
+        ];
+    }
+
+    /**
+     * Determine real-time execution status of a session based on current time.
+     */
+    protected function determineStatusPelaksanaan(
+        ?string $dbStatus,
+        ?JamPelajaran $jam,
+        string $todayDate,
+        Carbon $now,
+        string $tz
+    ): string {
+        if (in_array($dbStatus, ['dibatalkan', 'libur', 'selesai'], true)) {
+            return $dbStatus;
+        }
+
+        if (! $jam || ! $jam->mulai || ! $jam->selesai) {
+            return $dbStatus ?: 'terjadwal';
+        }
+
+        try {
+            $mulai = Carbon::parse($todayDate.' '.$jam->mulai, $tz);
+            $selesai = Carbon::parse($todayDate.' '.$jam->selesai, $tz);
+
+            if ($now->lt($mulai)) {
+                return 'terjadwal';
+            }
+            if ($now->between($mulai, $selesai)) {
+                return 'berlangsung';
+            }
+
+            return 'selesai';
+        } catch (\Throwable) {
+            return $dbStatus ?: 'terjadwal';
+        }
     }
 }
