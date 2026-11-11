@@ -26,3 +26,6 @@ Homestead.json
 Homestead.yaml
 php.ini
 Thumbs.db
+/public_root_old_backup
+*.zip
+*.sql

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AbsenHarianController;
+use App\Http\Controllers\Guru\AbsenSesiController;
 use App\Http\Controllers\Admin\BeritaController;
 use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\GuruPiketController;
@@ -43,6 +44,13 @@ Route::middleware(['auth', 'role:guru,guru_piket'])->group(function () {
     Route::post('/absen-harian', [AbsenHarianController::class, 'store'])->name('absen-harian.store');
     Route::post('/absen-harian/pulang', [AbsenHarianController::class, 'pulang'])->name('absen-harian.pulang');
     Route::post('/absen-harian/daftar-wajah', [AbsenHarianController::class, 'enrollFace'])->name('absen-harian.enroll-face');
+});
+
+Route::middleware(['auth', 'role:guru,guru_piket,admin'])->group(function () {
+    // T10 — Absen Siswa per Sesi
+    Route::get('/guru/absen-kelas', [AbsenSesiController::class, 'index'])->name('guru.absen-sesi.index');
+    Route::get('/guru/sesi/{sesi}/absen', [AbsenSesiController::class, 'show'])->name('guru.absen-sesi.show');
+    Route::post('/guru/sesi/{sesi}/absen', [AbsenSesiController::class, 'store'])->name('guru.absen-sesi.store');
 });
 
 Route::middleware(['auth', 'role:admin,kepsek'])->group(function () {

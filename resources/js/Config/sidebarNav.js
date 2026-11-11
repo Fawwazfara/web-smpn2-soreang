@@ -60,7 +60,7 @@ export const SIDEBAR_NAV = {
             items: [
                 { label: 'Dashboard Guru', route: 'dashboard', icon: 'layout-split' },
                 { label: 'Presensi Mandiri', route: 'absen-harian.index', icon: 'portrait-badge' },
-                { label: 'Presensi Siswa / KBM', route: null, icon: 'checklist' },
+                { label: 'Presensi Siswa / KBM', route: 'guru.absen-sesi.index', icon: 'checklist' },
                 { label: 'Jadwal Mengajar', route: null, icon: 'calendar-grid' },
                 { label: 'Jurnal Kelas', route: null, icon: 'open-book' },
                 { label: 'Nilai & Rapor', route: null, icon: 'star' },
@@ -82,32 +82,11 @@ export const SIDEBAR_NAV = {
     ],
     kepsek: [
         {
-            title: 'MAIN',
+            title: 'MONITORING EKSEKUTIF',
             items: [
-                { label: 'Dashboard', route: 'dashboard', icon: 'grid-4' },
-                { label: 'Live Monitor Kelas', route: null, icon: 'broadcast', liveDot: true },
-            ],
-        },
-        {
-            title: 'INFORMASI',
-            items: [
-                { label: 'Berita & Warta', route: 'admin.berita.index', icon: 'doc-fold' },
-            ],
-        },
-        {
-            title: 'ATTENDANCE',
-            items: [
-                { label: 'Presensi Guru', route: null, icon: 'map-pin' },
-                { label: 'Presensi Guru (Geofence)', route: 'absen-harian.rekap', icon: 'map-pin' },
-                { label: 'Presensi Siswa', route: null, icon: 'checklist' },
-                { label: 'Rekap & Laporan', route: null, icon: 'doc-fold' },
-            ],
-        },
-        {
-            title: 'JADWAL & SESI',
-            items: [
-                { label: 'Matriks Jadwal KBM', route: 'jadwal.index', icon: 'calendar-grid' },
-                { label: 'Guru Piket & Pengganti', route: null, icon: 'portrait-badge' },
+                { label: 'Dashboard Monitoring', route: 'dashboard', icon: 'grid-4' },
+                { label: 'Rekap Presensi Pegawai', route: 'absen-harian.rekap', icon: 'map-pin' },
+                { label: 'Rekap Presensi Siswa', route: null, icon: 'checklist' },
             ],
         },
     ],
