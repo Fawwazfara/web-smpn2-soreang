@@ -188,5 +188,100 @@ class KodePenggantiTest extends TestCase
 
         $response->assertSessionHasErrors('kode');
     }
+
+    public function test_regenerating_code_invalidates_previous_active_code_as_kadaluarsa(): void
+    {
+        $this->actingAs($this->guruPemilik)->post(route('sesi.generate-kode', $this->sesi->id));
+        $firstKode = KodePengganti::where('sesi_id', $this->sesi->id)->first();
+        $this->assertNotNull($firstKode);
+        $this->assertEquals('aktif', $firstKode->status);
+
+        $this->actingAs($this->guruPemilik)->post(route('sesi.generate-kode', $this->sesi->id));
+
+        $this->assertDatabaseHas('kode_pengganti', [
+            'id' => $firstKode->id,
+            'status' => 'kadaluarsa',
+        ]);
+
+        $activeCount = KodePengganti::where('sesi_id', $this->sesi->id)
+            ->where('status', 'aktif')
+            ->count();
+        $this->assertEquals(1, $activeCount);
+    }
+
+    public function test_code_is_only_valid_for_its_own_session_and_cannot_unlock_another_session(): void
+    {
+        $kelasLain = Kelas::create([
+            'nama' => 'VIII-C',
+            'tingkat' => 8,
+            'tahun_ajaran_id' => $this->tahunAjaran->id,
+        ]);
+
+        $sesiLain = Sesi::create([
+            'tanggal' => Carbon::today()->toDateString(),
+            'kelas_id' => $kelasLain->id,
+            'jam_pelajaran_id' => $this->jamPelajaran->id,
+            'mapel_id' => $this->mapel->id,
+            'guru_id' => $this->guruLain->id,
+            'status' => 'terjadwal',
+        ]);
+
+        $validKode = KodePengganti::create([
+            'sesi_id' => $this->sesi->id,
+            'kode' => '777888',
+            'dibuat_oleh' => $this->guruPemilik->id,
+            'berlaku_sampai' => Carbon::now()->addHours(2),
+            'status' => 'aktif',
+        ]);
+
+        // Coba klaim kode milik $this->sesi untuk membuka $sesiLain
+        $mismatchResponse = $this->actingAs($this->guruPiket)->post(route('piket.klaim-kode'), [
+            'kode' => '777888',
+            'sesi_id' => $sesiLain->id,
+        ]);
+
+        $mismatchResponse->assertSessionHasErrors('kode');
+        $this->assertNull($sesiLain->fresh()->guru_pengganti_id);
+        $this->assertNull($this->sesi->fresh()->guru_pengganti_id);
+        $this->assertEquals('aktif', $validKode->fresh()->status);
+
+        // Klaim untuk sesi yang benar berhasil dan hanya membuka sesi tersebut
+        $validResponse = $this->actingAs($this->guruPiket)->post(route('piket.klaim-kode'), [
+            'kode' => '777888',
+            'sesi_id' => $this->sesi->id,
+        ]);
+
+        $validResponse->assertSessionHas('success');
+        $this->assertEquals($this->guruPiket->id, $this->sesi->fresh()->guru_pengganti_id);
+        $this->assertNull($sesiLain->fresh()->guru_pengganti_id);
+    }
+
+    public function test_claim_code_is_rate_limited_after_five_failed_attempts(): void
+    {
+        $validKode = KodePengganti::create([
+            'sesi_id' => $this->sesi->id,
+            'kode' => '112233',
+            'dibuat_oleh' => $this->guruPemilik->id,
+            'berlaku_sampai' => Carbon::now()->addHours(2),
+            'status' => 'aktif',
+        ]);
+
+        // 5 percobaan salah berturut-turut
+        for ($i = 0; $i < 5; $i++) {
+            $res = $this->actingAs($this->guruPiket)->post(route('piket.klaim-kode'), [
+                'kode' => '00000'.$i,
+            ]);
+            $res->assertSessionHasErrors('kode');
+        }
+
+        // Percobaan ke-6 diblokir oleh rate limiter meskipun kodenya benar
+        $blockedResponse = $this->actingAs($this->guruPiket)->post(route('piket.klaim-kode'), [
+            'kode' => '112233',
+        ]);
+
+        $blockedResponse->assertSessionHasErrors('kode');
+        $this->assertEquals('aktif', $validKode->fresh()->status);
+        $this->assertNull($this->sesi->fresh()->guru_pengganti_id);
+    }
 }
 

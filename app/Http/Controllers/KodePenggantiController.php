@@ -7,50 +7,52 @@ use App\Models\Sesi;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
 
 class KodePenggantiController extends Controller
 {
-    /**
-     * Generate 6-digit numeric replacement code for a session owned by the authenticated teacher.
-     */
+    protected const MAX_CLAIM_ATTEMPTS = 5;
+
+    protected const DECAY_SECONDS = 60;
+
     public function generate(Request $request, Sesi $sesi): RedirectResponse
     {
         $user = $request->user();
 
-        // 1. Authorize: Only session owner (guru_id) can generate code
         if ($sesi->guru_id !== $user->id) {
             abort(403, 'Anda hanya dapat men-generate kode pengganti untuk sesi mengajar milik Anda sendiri.');
         }
 
-        // 2. Validate session is not already completed or replaced
-        if ($sesi->guru_pengganti_id !== null) {
+        if ($sesi->guru_pengganti_id !== null || $sesi->status === 'digantikan') {
             return back()->with('error', 'Sesi ini sudah memiliki guru pengganti.');
         }
 
-        // 3. Determine expiration time: until the session's end time on the session date
-        // Format jam_pelajaran: selesai is 'HH:MM:SS'
+        if (in_array($sesi->status, ['selesai', 'dibatalkan', 'libur'], true)) {
+            return back()->with('error', 'Kode pengganti tidak dapat dibuat untuk sesi yang sudah selesai, dibatalkan, atau libur.');
+        }
+
+        if ($sesi->tanggal->isBefore(Carbon::today())) {
+            return back()->with('error', 'Jam pelajaran untuk sesi ini telah selesai.');
+        }
+
         $sesiDate = $sesi->tanggal->toDateString();
         $jamSelesai = $sesi->jamPelajaran?->selesai ?? '15:00:00';
         $berlakuSampai = Carbon::parse("{$sesiDate} {$jamSelesai}");
 
-        // If session end time has already passed today
         if ($berlakuSampai->isPast()) {
-            return back()->with('error', 'Jam pelajaran untuk sesi ini telah selesai.');
+            $berlakuSampai = Carbon::now()->endOfDay();
         }
 
-        // 4. Invalidate any existing active code for this session
         KodePengganti::query()
             ->where('sesi_id', $sesi->id)
             ->where('status', 'aktif')
-            ->update(['status' => 'dibatalkan']);
+            ->update(['status' => 'kadaluarsa']);
 
-        // 5. Generate a unique 6-digit numeric string
         do {
             $kode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         } while (KodePengganti::where('kode', $kode)->exists());
 
-        // 6. Save new replacement code
         $kodePengganti = KodePengganti::create([
             'sesi_id' => $sesi->id,
             'kode' => $kode,
@@ -59,70 +61,108 @@ class KodePenggantiController extends Controller
             'status' => 'aktif',
         ]);
 
+        $sesi->loadMissing(['kelas:id,nama', 'mapel:id,nama', 'jamPelajaran:id,jam_ke']);
+
         return back()->with([
             'success' => 'Kode pengganti 6-digit berhasil dibuat.',
             'generated_kode' => [
                 'sesi_id' => $sesi->id,
                 'kode' => $kodePengganti->kode,
                 'berlaku_sampai' => $kodePengganti->berlaku_sampai->toIso8601String(),
+                'kelas' => $sesi->kelas?->nama,
+                'mapel' => $sesi->mapel?->nama,
+                'jam_ke' => $sesi->jamPelajaran?->jam_ke,
             ],
         ]);
     }
 
-    /**
-     * Claim code by authenticated guru_piket to unlock session.
-     */
     public function klaim(Request $request): RedirectResponse
     {
         $user = $request->user();
 
-        // 1. Authorize: Only guru_piket (or admin) can claim
         if ($user->role !== 'guru_piket' && $user->role !== 'admin') {
             abort(403, 'Hanya petugas guru piket yang berhak mengklaim kode pengganti.');
         }
 
-        // 2. Validate input
-        $request->validate([
+        $throttleKey = $this->claimThrottleKey($request);
+
+        if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_CLAIM_ATTEMPTS)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return back()->withErrors([
+                'kode' => "Terlalu banyak percobaan input kode. Silakan tunggu {$seconds} detik sebelum mencoba kembali.",
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), [
             'kode' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'sesi_id' => ['nullable', 'integer'],
         ], [
             'kode.required' => 'Kode unik 6-digit wajib diisi.',
             'kode.size' => 'Kode unik harus tepat 6 digit numerik.',
             'kode.regex' => 'Kode unik harus berupa angka.',
         ]);
 
-        $kodeInput = $request->input('kode');
+        if ($validator->fails()) {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
-        // 3. Find code record
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $kodeInput = (string) $request->input('kode');
+
         $kodeRecord = KodePengganti::query()
             ->with(['sesi.jamPelajaran', 'sesi.kelas', 'sesi.mapel', 'sesi.guru'])
             ->where('kode', $kodeInput)
             ->first();
 
         if (! $kodeRecord) {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
             return back()->withErrors(['kode' => 'Kode unik tidak ditemukan atau tidak valid.']);
         }
 
-        // 4. Check if already used
         if ($kodeRecord->status === 'terpakai' || $kodeRecord->diklaim_oleh !== null) {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
             return back()->withErrors(['kode' => 'Kode unik ini sudah pernah digunakan (sekali pakai).']);
         }
 
-        // 5. Check if cancelled or inactive
         if ($kodeRecord->status !== 'aktif') {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
             return back()->withErrors(['kode' => 'Kode unik sudah tidak aktif.']);
         }
 
-        // 6. Check expiration
         if (Carbon::now()->isAfter($kodeRecord->berlaku_sampai)) {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
             return back()->withErrors(['kode' => 'Kode unik telah kadaluarsa karena jam pelajaran sesi ini telah selesai.']);
         }
 
         $sesi = $kodeRecord->sesi;
         if (! $sesi) {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
             return back()->withErrors(['kode' => 'Sesi terkait kode ini tidak ditemukan.']);
         }
 
-        // 7. Process Claim (Unlock session & record replacement teacher)
+        if ($request->filled('sesi_id') && (int) $kodeRecord->sesi_id !== (int) $request->input('sesi_id')) {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
+            return back()->withErrors([
+                'kode' => 'Kode unik ini hanya berlaku untuk sesi terkait dan tidak dapat digunakan untuk membuka sesi atau kelas lain.',
+            ]);
+        }
+
+        if ($sesi->guru_pengganti_id !== null) {
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
+            return back()->withErrors(['kode' => 'Sesi ini sudah memiliki guru pengganti.']);
+        }
+
+        RateLimiter::clear($throttleKey);
+
         $now = Carbon::now();
 
         $kodeRecord->update([
@@ -137,6 +177,11 @@ class KodePenggantiController extends Controller
         ]);
 
         return back()->with('success', "Sesi Kelas {$sesi->kelas?->nama} (Mapel: {$sesi->mapel?->nama}) berhasil dibuka! Anda tercatat sebagai guru pengganti.");
+    }
+
+    protected function claimThrottleKey(Request $request): string
+    {
+        return 'klaim-kode:'.($request->user()?->id ?? 'guest').'|'.$request->ip();
     }
 }
 
