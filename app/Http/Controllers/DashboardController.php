@@ -220,11 +220,38 @@ class DashboardController extends Controller
 
         $absenHariIniFormatted = $absenSayaModel ? $this->formatPersonalAbsen($absenSayaModel, $tz) : null;
 
-        if ($user->role === 'guru_piket') {
-            $todayDate = Carbon::today()->toDateString();
-            $todayIso = Carbon::now()->dayOfWeekIso;
+        $todayDate = Carbon::today()->toDateString();
+        $todayIso = Carbon::now()->dayOfWeekIso;
+        $isHolidayToday = HariLibur::whereDate('tanggal', $todayDate)->exists();
 
-            // 1. Ambil sesi yang sudah terbuat untuk hari ini
+        if ($todayIso >= 1 && $todayIso <= 6 && ! $isHolidayToday) {
+            $activeSlotsToday = JadwalSlot::query()
+                ->where('hari', $todayIso)
+                ->whereNotNull('guru_id')
+                ->when($tahunAjaranAktif, function ($q) use ($tahunAjaranAktif) {
+                    $q->whereHas('kelas', fn ($k) => $k->where('tahun_ajaran_id', $tahunAjaranAktif->id));
+                })
+                ->whereHas('versi', fn ($v) => $v->where('status', 'aktif'))
+                ->get();
+
+            foreach ($activeSlotsToday as $slot) {
+                Sesi::firstOrCreate(
+                    [
+                        'tanggal' => $todayDate,
+                        'kelas_id' => $slot->kelas_id,
+                        'jam_pelajaran_id' => $slot->jam_pelajaran_id,
+                    ],
+                    [
+                        'mapel_id' => $slot->mapel_id,
+                        'guru_id' => $slot->guru_id,
+                        'slot_id' => $slot->id,
+                        'status' => 'terjadwal',
+                    ]
+                );
+            }
+        }
+
+        if ($user->role === 'guru_piket') {
             $sesiHariIni = Sesi::query()
                 ->whereDate('tanggal', $todayDate)
                 ->when($tahunAjaranAktif, function ($q) use ($tahunAjaranAktif) {
@@ -240,7 +267,6 @@ class DashboardController extends Controller
                 ])
                 ->get();
 
-            // 2. Jika sesi belum di-generate dari jadwal slot, fallback tampilkan dari slot jadwal aktif hari ini
             $existingSlotIds = $sesiHariIni->pluck('slot_id')->filter()->all();
             $existingClassJamPairs = $sesiHariIni->map(fn ($s) => $s->kelas_id.'_'.$s->jam_pelajaran_id)->all();
 
@@ -260,7 +286,7 @@ class DashboardController extends Controller
 
             $listSesiMapped = $sesiHariIni->map(function ($s) use ($user) {
                 $isClaimedByCurrent = $s->guru_pengganti_id === $user->id;
-                $isLocked = ! $isClaimedByCurrent; // Terkunci jika belum diklaim oleh guru piket yang sedang login
+                $isLocked = ! $isClaimedByCurrent;
 
                 return [
                     'id' => $s->id,
@@ -277,7 +303,6 @@ class DashboardController extends Controller
                 ];
             });
 
-            // Tambahkan slot yang belum dibuat sesi (otomatis berstatus terkunci)
             foreach ($slotsHariIni as $slot) {
                 $pair = $slot->kelas_id.'_'.$slot->jam_pelajaran_id;
                 if (in_array($slot->id, $existingSlotIds, true) || in_array($pair, $existingClassJamPairs, true)) {
@@ -320,13 +345,11 @@ class DashboardController extends Controller
             ]);
         }
 
-        $todayDate = Carbon::today()->toDateString();
-
         $sesiMengajarHariIni = Sesi::query()
             ->whereDate('tanggal', $todayDate)
             ->where('guru_id', $user->id)
             ->with([
-                'kelas:id,nama,tingkat',
+                'kelas' => fn ($q) => $q->select('id', 'nama', 'tingkat')->withCount('siswa'),
                 'jamPelajaran:id,jam_ke,mulai,selesai',
                 'mapel:id,kode,nama',
                 'guruPengganti:id,nama,username',
@@ -337,6 +360,8 @@ class DashboardController extends Controller
                 },
             ])
             ->get()
+            ->sortBy(fn ($s) => $s->jamPelajaran?->jam_ke ?? 0)
+            ->values()
             ->map(function ($s) {
                 $activeKode = $s->kodePengganti->first();
 

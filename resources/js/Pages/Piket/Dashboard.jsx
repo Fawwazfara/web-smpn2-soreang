@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function Dashboard({
     stats = {},
@@ -12,10 +12,14 @@ export default function Dashboard({
     const user = usePage().props.auth.user;
     const { flash, errors } = usePage().props;
     const [kodeInput, setKodeInput] = useState('');
+    const [selectedSesi, setSelectedSesi] = useState(null);
+    const [kelasFilter, setKelasFilter] = useState('all');
+    const [tingkatFilter, setTingkatFilter] = useState('all');
     const [processing, setProcessing] = useState(false);
     const [inputMsg, setInputMsg] = useState(null);
-    const [tingkatFilter, setTingkatFilter] = useState('all');
+    const [activeUnlockedNotice, setActiveUnlockedNotice] = useState(null);
     const [now, setNow] = useState(() => new Date());
+    const kodeInputRef = useRef(null);
 
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000);
@@ -50,11 +54,33 @@ export default function Dashboard({
 
     const tahunAjaran = stats.tahun_ajaran_aktif;
 
-    // Filter sessions by grade level
+    // Filter classes by grade level
+    const filteredKelasList = useMemo(() => {
+        if (tingkatFilter === 'all') return kelasList;
+        return kelasList.filter((k) => String(k.tingkat) === String(tingkatFilter));
+    }, [kelasList, tingkatFilter]);
+
+    // Filter sessions by grade level & selected class
     const filteredSesi = useMemo(() => {
-        if (tingkatFilter === 'all') return sesiHariIni;
-        return sesiHariIni.filter((sesi) => String(sesi.kelas?.tingkat) === String(tingkatFilter));
-    }, [sesiHariIni, tingkatFilter]);
+        return sesiHariIni.filter((sesi) => {
+            if (tingkatFilter !== 'all' && String(sesi.kelas?.tingkat) !== String(tingkatFilter)) {
+                return false;
+            }
+            if (kelasFilter !== 'all' && String(sesi.kelas?.id) !== String(kelasFilter)) {
+                return false;
+            }
+            return true;
+        });
+    }, [sesiHariIni, tingkatFilter, kelasFilter]);
+
+    const handleSelectLockedSesi = (sesi) => {
+        setSelectedSesi(sesi);
+        setInputMsg(null);
+        if (kodeInputRef.current) {
+            kodeInputRef.current.focus();
+            kodeInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
 
     const handleVerifyCode = (e) => {
         e.preventDefault();
@@ -68,28 +94,30 @@ export default function Dashboard({
             return;
         }
 
+        const payload = { kode: kodeInput };
+        if (selectedSesi?.id) {
+            payload.sesi_id = selectedSesi.id;
+        }
+
         setProcessing(true);
-        router.post(
-            route('piket.klaim-kode'),
-            { kode: kodeInput },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setProcessing(false);
-                    setKodeInput('');
-                    setInputMsg(null);
-                },
-                onError: (errs) => {
-                    setProcessing(false);
-                    if (errs.kode) {
-                        setInputMsg({
-                            type: 'error',
-                            text: errs.kode,
-                        });
-                    }
-                },
-            }
-        );
+        router.post(route('piket.klaim-kode'), payload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setProcessing(false);
+                setKodeInput('');
+                setSelectedSesi(null);
+                setInputMsg(null);
+            },
+            onError: (errs) => {
+                setProcessing(false);
+                if (errs.kode) {
+                    setInputMsg({
+                        type: 'error',
+                        text: errs.kode,
+                    });
+                }
+            },
+        });
     };
 
     return (
@@ -173,6 +201,27 @@ export default function Dashboard({
                             </p>
 
                             <form onSubmit={handleVerifyCode} className="mt-4 space-y-3">
+                                {selectedSesi && (
+                                    <div className="flex items-center justify-between gap-2 rounded-[10px] border border-[#006C4A]/30 bg-white px-3 py-2 text-xs">
+                                        <div className="min-w-0">
+                                            <span className="block text-[10px] font-bold uppercase tracking-wider text-[#006C4A]">
+                                                Target Sesi Dipilih
+                                            </span>
+                                            <span className="block truncate font-bold text-[#111C2D]">
+                                                Kelas {selectedSesi.kelas?.nama ?? '-'} • Jam Ke-{selectedSesi.jam_pelajaran?.jam_ke ?? '-'} ({selectedSesi.mapel?.nama ?? '-'})
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedSesi(null)}
+                                            className="rounded-md px-1.5 py-0.5 text-xs font-bold text-[#3F463F] hover:bg-[#CFD9F0]"
+                                            title="Hapus filter sesi"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div>
                                     <label
                                         htmlFor="kode-pengganti"
@@ -181,6 +230,7 @@ export default function Dashboard({
                                         KODE UNIK SESI (6 ANGKA)
                                     </label>
                                     <input
+                                        ref={kodeInputRef}
                                         id="kode-pengganti"
                                         type="text"
                                         inputMode="numeric"
@@ -213,15 +263,15 @@ export default function Dashboard({
                                 </div>
                             )}
 
-                            {inputMsg && (
+                            {(inputMsg || errors?.kode) && (
                                 <div
                                     className={`mt-3.5 rounded-[12px] p-3 text-xs font-medium ${
-                                        inputMsg.type === 'error'
+                                        (inputMsg?.type ?? 'error') === 'error'
                                             ? 'border border-[#C41E1E]/30 bg-[#C41E1E]/10 text-[#C41E1E]'
                                             : 'border border-[#006C4A]/30 bg-[#82F5C1]/20 text-[#002114]'
                                     }`}
                                 >
-                                    {inputMsg.text}
+                                    {inputMsg?.text || errors?.kode}
                                 </div>
                             )}
 
@@ -336,7 +386,7 @@ export default function Dashboard({
                         </div>
                     </div>
 
-                    {/* Right Column (8 cols): Grid Daftar Sesi Kelas Hari Ini (Locked Strict) */}
+                    {/* Right Column (8 cols): Grid Daftar Kelas & Sesi Hari Ini (Locked Strict) */}
                     <div className="lg:col-span-8 rounded-[24px] border border-[#C5CEE3] bg-[#E8EEFF] p-6 shadow-sm space-y-5">
                         {/* Header & Filter Sesi */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -353,7 +403,7 @@ export default function Dashboard({
                                     </span>
                                 </div>
                                 <p className="text-xs text-[#3F463F] mt-0.5">
-                                    Seluruh sesi berstatus terkunci (locked). Absensi terbuka khusus sesi yang telah diklaim kode unik 6-digit.
+                                    Seluruh kelas & sesi berstatus terkunci (locked). Absensi terbuka khusus sesi yang telah diklaim kode unik 6-digit.
                                 </p>
                             </div>
 
@@ -369,7 +419,10 @@ export default function Dashboard({
                                         <button
                                             key={tab.key}
                                             type="button"
-                                            onClick={() => setTingkatFilter(tab.key)}
+                                            onClick={() => {
+                                                setTingkatFilter(tab.key);
+                                                setKelasFilter('all');
+                                            }}
                                             className={`rounded-[6px] px-2.5 py-1 text-xs font-semibold transition ${
                                                 tingkatFilter === tab.key
                                                     ? 'bg-[#002114] text-white'
@@ -382,6 +435,92 @@ export default function Dashboard({
                                 </div>
                             </div>
                         </div>
+
+                        {/* Kotak Status Kunci Kelas (PRD 2.C.2: Semua kelas tampil sebagai kotak dengan status terkunci) */}
+                        {filteredKelasList.length > 0 && (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-bold uppercase tracking-wider text-[#111C2D]">
+                                        Status Kunci Rombel / Kelas ({filteredKelasList.length} Kelas)
+                                    </span>
+                                    {kelasFilter !== 'all' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setKelasFilter('all')}
+                                            className="font-bold text-[#006C4A] hover:underline"
+                                        >
+                                            Tampilkan Semua Kelas
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                                    {filteredKelasList.map((kls) => {
+                                        const sesiKelas = sesiHariIni.filter((s) => s.kelas?.id === kls.id);
+                                        const unlockedCount = sesiKelas.filter((s) => s.status_kunci === 'terbuka').length;
+                                        const isSelectedKelas = String(kelasFilter) === String(kls.id);
+
+                                        return (
+                                            <button
+                                                key={kls.id}
+                                                type="button"
+                                                onClick={() =>
+                                                    setKelasFilter(isSelectedKelas ? 'all' : String(kls.id))
+                                                }
+                                                className={`rounded-[14px] border p-2.5 text-left transition flex items-center justify-between gap-2 ${
+                                                    isSelectedKelas
+                                                        ? 'border-[#002114] bg-[#002114] text-white shadow-xs'
+                                                        : unlockedCount > 0
+                                                          ? 'border-[#006C4A] bg-white text-[#111C2D]'
+                                                          : 'border-[#C5CEE3] bg-white/90 text-[#111C2D] hover:bg-white'
+                                                }`}
+                                            >
+                                                <div className="min-w-0">
+                                                    <div className="text-xs font-extrabold truncate">
+                                                        Kelas {kls.nama}
+                                                    </div>
+                                                    <div
+                                                        className={`text-[10px] truncate ${
+                                                            isSelectedKelas ? 'text-[#82F5C1]' : 'text-[#3F463F]'
+                                                        }`}
+                                                    >
+                                                        {sesiKelas.length} Sesi • {kls.siswa_count ?? 0} Siswa
+                                                    </div>
+                                                </div>
+                                                <span
+                                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold shrink-0 ${
+                                                        unlockedCount > 0
+                                                            ? 'bg-[#82F5C1] text-[#002114]'
+                                                            : isSelectedKelas
+                                                              ? 'bg-white/15 text-white'
+                                                              : 'bg-[#C41E1E]/10 text-[#C41E1E]'
+                                                    }`}
+                                                >
+                                                    {unlockedCount > 0 ? 'Terbuka' : 'Terkunci'}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeUnlockedNotice && (
+                            <div className="rounded-[14px] border border-[#006C4A]/40 bg-[#82F5C1]/30 p-3.5 flex items-center justify-between gap-3 text-xs text-[#002114]">
+                                <div>
+                                    <strong>Sesi Terbuka (Guru Pengganti):</strong> Kelas{' '}
+                                    <strong>{activeUnlockedNotice.kelas?.nama}</strong> • Mapel{' '}
+                                    <strong>{activeUnlockedNotice.mapel?.nama}</strong> (Jam Ke-
+                                    {activeUnlockedNotice.jam_pelajaran?.jam_ke}). Form input absen siswa oleh guru piket disambungkan pada modul <strong>T16</strong>.
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveUnlockedNotice(null)}
+                                    className="font-bold text-[#002114] hover:opacity-70 px-1.5"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
 
                         {/* List Grid Sesi Kelas */}
                         {filteredSesi.length === 0 ? (
@@ -400,6 +539,7 @@ export default function Dashboard({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {filteredSesi.map((sesi, idx) => {
                                     const isLocked = sesi.status_kunci === 'terkunci';
+                                    const isTargetSelected = selectedSesi?.id && selectedSesi.id === sesi.id;
                                     const jamMulai = sesi.jam_pelajaran?.mulai ? sesi.jam_pelajaran.mulai.slice(0, 5) : '-';
                                     const jamSelesai = sesi.jam_pelajaran?.selesai ? sesi.jam_pelajaran.selesai.slice(0, 5) : '-';
 
@@ -408,7 +548,9 @@ export default function Dashboard({
                                             key={sesi.id ?? `slot-${sesi.slot_id}-${idx}`}
                                             className={`rounded-[20px] border p-4 flex flex-col justify-between transition-all ${
                                                 isLocked
-                                                    ? 'bg-white border-[#C5CEE3] shadow-xs'
+                                                    ? isTargetSelected
+                                                        ? 'bg-white border-[#002114] ring-2 ring-[#002114]/20'
+                                                        : 'bg-white border-[#C5CEE3] shadow-xs'
                                                     : 'bg-white border-[#006C4A] ring-2 ring-[#006C4A]/20'
                                             }`}
                                         >
@@ -471,14 +613,14 @@ export default function Dashboard({
                                                 </div>
                                             </div>
 
-                                            {/* Action Button: Disabled if Locked */}
+                                            {/* Action Button */}
                                             <div className="mt-4 pt-3 border-t border-[#C5CEE3]/60">
                                                 {isLocked ? (
                                                     <button
                                                         type="button"
-                                                        disabled
-                                                        className="w-full rounded-[8px] bg-[#C5CEE3]/60 text-[#3F463F] py-2.5 px-3 text-xs font-semibold cursor-not-allowed flex items-center justify-center gap-2"
-                                                        title="Sesi terkunci. Masukkan kode unik 6-digit untuk membuka."
+                                                        onClick={() => handleSelectLockedSesi(sesi)}
+                                                        className="w-full rounded-[8px] bg-[#C5CEE3]/60 hover:bg-[#CFD9F0] text-[#111C2D] py-2.5 px-3 text-xs font-semibold transition flex items-center justify-center gap-2"
+                                                        title="Klik untuk memasukkan kode unik 6-digit sesi ini"
                                                     >
                                                         <svg className="w-4 h-4 text-[#C41E1E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -488,6 +630,7 @@ export default function Dashboard({
                                                 ) : (
                                                     <button
                                                         type="button"
+                                                        onClick={() => setActiveUnlockedNotice(sesi)}
                                                         className="w-full rounded-[8px] bg-[#006C4A] hover:bg-[#002114] text-white py-2.5 px-3 text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs"
                                                     >
                                                         <svg className="w-4 h-4 text-[#82F5C1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">

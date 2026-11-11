@@ -78,24 +78,28 @@ export default function Dashboard({
     }, [sesiHariIni]);
 
     // 3. Polling status penggantian (PRD Bagian 3 poin 6)
-    // Berjalan hanya jika ada sesi yang memiliki kode aktif dan belum digantikan
+    // Berjalan jika ada sesi hari ini yang belum digantikan (lebih cepat saat kode aktif)
     const hasPendingReplacement = sesiHariIni.some(
         (s) => s.active_kode && !s.guru_pengganti && s.status !== 'digantikan'
     );
+    const hasUnreplacedSession = sesiHariIni.some(
+        (s) => !s.guru_pengganti && s.status !== 'digantikan'
+    );
 
     useEffect(() => {
-        if (!hasPendingReplacement) return;
+        if (!hasUnreplacedSession) return;
 
+        const intervalMs = hasPendingReplacement ? 5000 : 10000;
         const pollTimer = setInterval(() => {
             router.reload({
                 only: ['sesiHariIni'],
                 preserveScroll: true,
                 preserveState: true,
             });
-        }, 10000); // Poll setiap 10 detik
+        }, intervalMs);
 
         return () => clearInterval(pollTimer);
-    }, [hasPendingReplacement]);
+    }, [hasPendingReplacement, hasUnreplacedSession]);
 
     // 4. Hitung sisa masa berlaku kode (countdown helper)
     const getRemainingTime = (isoExpiry) => {
@@ -118,6 +122,18 @@ export default function Dashboard({
         }
     }, [flash]);
 
+    const handleOpenExistingKode = (sesi) => {
+        if (!sesi?.active_kode) return;
+        setActiveKodeModal({
+            sesi_id: sesi.id,
+            kode: sesi.active_kode.kode,
+            berlaku_sampai: sesi.active_kode.berlaku_sampai,
+            kelas: sesi.kelas?.nama,
+            mapel: sesi.mapel?.nama,
+            jam_ke: sesi.jam_pelajaran?.jam_ke,
+        });
+    };
+
     const handleGenerateKode = (sesi) => {
         setGeneratingSesi(sesi.id);
         router.post(
@@ -129,6 +145,18 @@ export default function Dashboard({
                     setGeneratingSesi(null);
                     if (page.props.flash?.generated_kode) {
                         setActiveKodeModal(page.props.flash.generated_kode);
+                        return;
+                    }
+                    const updatedSesi = (page.props.sesiHariIni || []).find((s) => s.id === sesi.id);
+                    if (updatedSesi?.active_kode) {
+                        setActiveKodeModal({
+                            sesi_id: updatedSesi.id,
+                            kode: updatedSesi.active_kode.kode,
+                            berlaku_sampai: updatedSesi.active_kode.berlaku_sampai,
+                            kelas: updatedSesi.kelas?.nama,
+                            mapel: updatedSesi.mapel?.nama,
+                            jam_ke: updatedSesi.jam_pelajaran?.jam_ke,
+                        });
                     }
                 },
                 onError: () => {
@@ -911,57 +939,128 @@ export default function Dashboard({
                     {/* Right Column (7 cols): Active KBM Card + Jadwal Mengajar Hari Ini */}
                     <div className="lg:col-span-7 space-y-6">
                         {/* Active KBM Session Card */}
-                        <div className="rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-[#0E7452]">
-                                    <span className="h-2 w-2 rounded-full bg-[#10B981]" />
-                                    KBM SEGERA DIMULAI • JAM KE 1 - 2
-                                </span>
-                                <span className="rounded-full bg-[#E6F5EE] px-3 py-0.5 text-[10.5px] font-bold text-[#0E7452]">
-                                    07:00 – 08:30 WIB (90 Menit)
-                                </span>
-                            </div>
+                        {(() => {
+                            const primarySesi =
+                                sesiHariIni.find((s) => !s.guru_pengganti && s.status !== 'digantikan') ||
+                                sesiHariIni[0] ||
+                                null;
+                            const pJamMulai = primarySesi?.jam_pelajaran?.mulai
+                                ? primarySesi.jam_pelajaran.mulai.slice(0, 5)
+                                : '07:00';
+                            const pJamSelesai = primarySesi?.jam_pelajaran?.selesai
+                                ? primarySesi.jam_pelajaran.selesai.slice(0, 5)
+                                : '08:30';
+                            const pIsReplaced =
+                                primarySesi &&
+                                (primarySesi.guru_pengganti !== null || primarySesi.status === 'digantikan');
 
-                            <h2 className="mt-3 text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-                                Matematika • Kelas VII–A
-                            </h2>
-                            <p className="mt-1 text-xs sm:text-[13px] text-slate-500">
-                                Materi Pokok: Aljabar Linier Satu Variabel (CPP 6)
-                            </p>
+                            return (
+                                <div className="rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-[#0E7452]">
+                                            <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+                                            KBM AKTIF • JAM KE {primarySesi?.jam_pelajaran?.jam_ke ?? '1'}
+                                        </span>
+                                        <span className="rounded-full bg-[#E6F5EE] px-3 py-0.5 text-[10.5px] font-bold text-[#0E7452]">
+                                            {pJamMulai} – {pJamSelesai} WIB
+                                        </span>
+                                    </div>
 
-                            <div className="mt-4 space-y-2.5 text-xs text-slate-600">
-                                <div className="flex items-center gap-2.5">
-                                    <svg className="w-4 h-4 text-[#0E7452] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 19.5s6-5.25 6-10.125a6 6 0 10-12 0C6 14.25 12 19.5 12 19.5z" />
-                                    </svg>
-                                    <span>Ruang 04, Gedung A Lantai 1</span>
-                                </div>
-                                <div className="flex items-center gap-2.5">
-                                    <svg className="w-4 h-4 text-[#0E7452] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
-                                    </svg>
-                                    <span>32 Siswa Terdaftar</span>
-                                </div>
-                                <div className="flex items-center gap-2.5">
-                                    <svg className="w-4 h-4 text-[#0E7452] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                        <rect x="4" y="4" width="16" height="16" rx="2" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
-                                    </svg>
-                                    <span>RPP Terverifikasi</span>
-                                </div>
-                            </div>
+                                    <h2 className="mt-3 text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
+                                        {primarySesi
+                                            ? `${primarySesi.mapel?.nama ?? 'Mata Pelajaran'} • Kelas ${primarySesi.kelas?.nama ?? '-'}`
+                                            : 'Matematika • Kelas VII–A'}
+                                    </h2>
+                                    <p className="mt-1 text-xs sm:text-[13px] text-slate-500">
+                                        {pIsReplaced
+                                            ? `Status Sesi: Sudah Digantikan oleh ${primarySesi.guru_pengganti?.nama || 'Guru Piket'}`
+                                            : primarySesi?.active_kode
+                                              ? `Kode Pengganti 6-Digit Aktif (${primarySesi.active_kode.kode}) • Sisa waktu: ${getRemainingTime(primarySesi.active_kode.berlaku_sampai)}`
+                                              : 'Jika berhalangan hadir, klik tombol Generate Kode Piket di bawah untuk membuat 6-digit kode unik.'}
+                                    </p>
 
-                            <button
-                                type="button"
-                                className="mt-5 w-full rounded-xl bg-[#046C4E] py-3.5 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#03583F] transition flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0m2.25-9.868l1.5 1.5 3-3" />
-                                </svg>
-                                Buka Presensi Siswa Kelas VII–A
-                            </button>
-                        </div>
+                                    {primarySesi?.active_kode && !pIsReplaced && (
+                                        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border-2 border-dashed border-[#0E7452]/40 bg-[#F4FBF7] p-3.5">
+                                            <div>
+                                                <span className="block text-[10px] font-bold uppercase tracking-wider text-[#0E7452]">
+                                                    Kode Unik Pengganti Sesi Ini (6-Digit)
+                                                </span>
+                                                <span className="mt-0.5 block font-mono text-2xl font-extrabold tracking-[0.25em] text-[#0D3124]">
+                                                    {primarySesi.active_kode.kode}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCopyKode(primarySesi.active_kode.kode)}
+                                                    className="rounded-lg bg-[#046C4E] px-3 py-2 text-xs font-bold text-white hover:bg-[#03583F] transition"
+                                                >
+                                                    {copied ? 'Tersalin!' : 'Salin Kode'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenExistingKode(primarySesi)}
+                                                    className="rounded-lg border border-[#0E7452] bg-white px-3 py-2 text-xs font-bold text-[#0E7452] hover:bg-[#E6F5EE] transition"
+                                                >
+                                                    Popup Kode
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4 space-y-2.5 text-xs text-slate-600">
+                                        <div className="flex items-center gap-2.5">
+                                            <svg className="w-4 h-4 text-[#0E7452] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19.5s6-5.25 6-10.125a6 6 0 10-12 0C6 14.25 12 19.5 12 19.5z" />
+                                            </svg>
+                                            <span>Ruang Kelas {primarySesi?.kelas?.nama ?? 'VII-A'}, SMPN 2 Soreang</span>
+                                        </div>
+                                        <div className="flex items-center gap-2.5">
+                                            <svg className="w-4 h-4 text-[#0E7452] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
+                                            </svg>
+                                            <span>{primarySesi?.kelas?.siswa_count ?? 32} Siswa Terdaftar</span>
+                                        </div>
+                                    </div>
+
+                                    {primarySesi && (
+                                        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            {pIsReplaced ? (
+                                                <div className="sm:col-span-2 rounded-xl bg-[#E6F5EE] border border-[#0E7452]/30 py-3 px-4 text-xs font-bold text-[#0E7452] flex items-center justify-center gap-2">
+                                                    ✓ Sesi Sudah Digantikan oleh {primarySesi.guru_pengganti?.nama || 'Guru Piket'}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleGenerateKode(primarySesi)}
+                                                        disabled={generatingSesi === primarySesi.id}
+                                                        className="w-full rounded-xl bg-[#0F382A] py-3.5 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#164B38] disabled:opacity-50 transition flex items-center justify-center gap-2"
+                                                    >
+                                                        <svg className="w-4 h-4 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818" />
+                                                        </svg>
+                                                        {generatingSesi === primarySesi.id
+                                                            ? 'Membuat Kode...'
+                                                            : primarySesi.active_kode
+                                                              ? 'Buat Ulang Kode Pengganti (6-Digit)'
+                                                              : 'Generate Kode Piket (6-Digit)'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPiketModal(true)}
+                                                        className="w-full rounded-xl bg-[#046C4E] py-3.5 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#03583F] transition flex items-center justify-center gap-2"
+                                                    >
+                                                        Hubungi Guru Piket Bertugas
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                         {/* Jadwal Mengajar Hari Ini Card + Dapodik Footer */}
                         <div className="rounded-2xl border border-[#E5ECE9] bg-white p-6 shadow-2xs">
@@ -974,6 +1073,12 @@ export default function Dashboard({
                                     <h3 className="text-base font-bold text-slate-900">
                                         Jadwal Sesi Mengajar Hari Ini
                                     </h3>
+                                    {hasPendingReplacement && (
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E6F5EE] px-2.5 py-0.5 text-[10px] font-bold text-[#0E7452]">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-ping" />
+                                            Polling Status Pengganti
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-[11px] font-medium text-slate-500">
                                     {formattedShortDate} •{' '}
@@ -1030,7 +1135,7 @@ export default function Dashboard({
                                                                     <svg className="w-3 h-3 text-[#006C4A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                                                                     </svg>
-                                                                    Sudah Digantikan oleh: {sesi.guru_pengganti?.nama}
+                                                                    Sudah Digantikan oleh: {sesi.guru_pengganti?.nama || 'Guru Piket'}
                                                                 </span>
                                                             ) : sesi.active_kode ? (
                                                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF3E2] border border-[#B45309]/30 px-2.5 py-0.5 text-[10px] font-bold text-[#B45309]">
@@ -1052,8 +1157,29 @@ export default function Dashboard({
                                                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                                                     {isReplaced ? (
                                                         <span className="rounded-lg bg-[#E6F5EE] px-3 py-1.5 text-xs font-bold text-[#0E7452]">
-                                                            ✓ Selesai Dialihkan
+                                                            ✓ Sudah Digantikan
                                                         </span>
+                                                    ) : sesi.active_kode ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenExistingKode(sesi)}
+                                                                className="rounded-lg border border-[#0E7452] bg-[#E6F5EE] hover:bg-[#D5EFE4] text-[#0E7452] px-3 py-1.5 text-xs font-bold transition"
+                                                            >
+                                                                Lihat Kode
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleGenerateKode(sesi)}
+                                                                disabled={generatingSesi === sesi.id}
+                                                                className="rounded-lg bg-[#0F382A] hover:bg-[#164B38] text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                                </svg>
+                                                                {generatingSesi === sesi.id ? 'Membuat...' : 'Buat Ulang'}
+                                                            </button>
+                                                        </div>
                                                     ) : (
                                                         <button
                                                             type="button"
@@ -1064,7 +1190,7 @@ export default function Dashboard({
                                                             <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818" />
                                                             </svg>
-                                                            {generatingSesi === sesi.id ? 'Membuat...' : (sesi.active_kode ? 'Lihat/Buat Ulang Kode' : 'Generate Kode Piket')}
+                                                            {generatingSesi === sesi.id ? 'Membuat...' : 'Generate Kode Piket'}
                                                         </button>
                                                     )}
                                                 </div>
@@ -1276,7 +1402,73 @@ export default function Dashboard({
                         </button>
                     </div>
 
+                    {sesiHariIni.length > 0 && (
+                        <div className="mt-4 rounded-xl border border-[#DCE5E1] bg-[#F8FAF9] p-3.5 space-y-2.5">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-[#0E7452]">
+                                1. Buat Kode Unik 6-Digit untuk Sesi Anda
+                            </p>
+                            <div className="space-y-2">
+                                {sesiHariIni.map((sesi) => {
+                                    const isReplaced = sesi.guru_pengganti !== null || sesi.status === 'digantikan';
+                                    return (
+                                        <div
+                                            key={sesi.id}
+                                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E5ECE9] bg-white p-2.5"
+                                        >
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-900">
+                                                    Jam ke-{sesi.jam_pelajaran?.jam_ke ?? '-'} • {sesi.mapel?.nama} (Kelas {sesi.kelas?.nama})
+                                                </p>
+                                                {isReplaced ? (
+                                                    <span className="text-[10.5px] font-bold text-[#0E7452]">
+                                                        ✓ Sudah Digantikan oleh {sesi.guru_pengganti?.nama || 'Guru Piket'}
+                                                    </span>
+                                                ) : sesi.active_kode ? (
+                                                    <span className="font-mono text-xs font-extrabold text-[#B45309]">
+                                                        Kode Aktif: {sesi.active_kode.kode}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10.5px] text-slate-500">
+                                                        Belum ada kode pengganti
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {!isReplaced && (
+                                                <div className="flex items-center gap-1.5">
+                                                    {sesi.active_kode && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCopyKode(sesi.active_kode.kode)}
+                                                            className="rounded-md bg-[#E6F5EE] px-2.5 py-1.5 text-[11px] font-bold text-[#0E7452] hover:bg-[#D5EFE4]"
+                                                        >
+                                                            Salin ({sesi.active_kode.kode})
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleGenerateKode(sesi)}
+                                                        disabled={generatingSesi === sesi.id}
+                                                        className="rounded-md bg-[#0F382A] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#164B38] disabled:opacity-50"
+                                                    >
+                                                        {generatingSesi === sesi.id
+                                                            ? 'Membuat...'
+                                                            : sesi.active_kode
+                                                              ? 'Buat Ulang'
+                                                              : 'Generate Kode'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="mt-4 space-y-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                            2. Kirim Kode ke Guru Piket via WhatsApp
+                        </p>
                         {piketHariIni.length === 0 ? (
                             <div className="rounded-xl bg-[#F6F9F8] border border-dashed border-[#DCE6E1] p-6 text-center">
                                 <svg className="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
