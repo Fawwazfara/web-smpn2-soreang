@@ -448,6 +448,16 @@ export default function Index({ sesi, sesiBerjalan = [], siswas = [], absenMap =
                                                                     }`}>
                                                                         {existing.status_konfirmasi}
                                                                     </span>
+                                                                    <a
+                                                                        href={`/konfirmasi/${existing.konfirmasi_token}`}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="ml-1 inline-flex items-center gap-0.5 text-[#006C4A] hover:text-[#143823] font-bold underline"
+                                                                        title="Buka link publik konfirmasi orang tua"
+                                                                    >
+                                                                        <span>Buka Link</span>
+                                                                        <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                                                                    </a>
                                                                 </div>
                                                             ) : att.status === 'H' || att.status === 'A' ? (
                                                                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-[#006C4A] text-[11px]">

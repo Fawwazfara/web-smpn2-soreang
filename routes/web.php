@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\KelasController;
 use App\Http\Controllers\KodePenggantiController;
+use App\Http\Controllers\KonfirmasiOrtuController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MapelController;
 use App\Http\Controllers\ProfileController;
@@ -25,6 +26,10 @@ Route::get('/profil', [LandingPageController::class, 'profil'])->name('profil');
 Route::get('/berita', [LandingPageController::class, 'berita'])->name('berita');
 Route::get('/galeri', [LandingPageController::class, 'galeri'])->name('galeri');
 Route::get('/kontak', [LandingPageController::class, 'kontak'])->name('kontak');
+
+// T13 — Konfirmasi Orang Tua (Link Token Publik Tanpa Login)
+Route::middleware('throttle:60,1')->get('/konfirmasi/{token}', [KonfirmasiOrtuController::class, 'show'])->name('konfirmasi.show');
+Route::middleware('throttle:15,1')->post('/konfirmasi/{token}', [KonfirmasiOrtuController::class, 'store'])->name('konfirmasi.store');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
