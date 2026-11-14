@@ -188,3 +188,4 @@ class KonfirmasiOrtuController extends Controller
         return redirect()->route('konfirmasi.show', $token)->with('success', 'Bukti kehadiran ananda berhasil dikirim dan diverifikasi oleh sistem.');
     }
 }
+
