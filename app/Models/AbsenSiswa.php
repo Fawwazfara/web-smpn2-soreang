@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Table('absen_siswa')]
 #[Fillable(['sesi_id', 'siswa_id', 'status', 'catatan', 'bukti_path', 'dicatat_oleh', 'waktu', 'status_konfirmasi', 'konfirmasi_token', 'token_berlaku_sampai', 'bukti_diunggah_pada', 'keterangan_konfirmasi'])]
@@ -33,5 +34,10 @@ class AbsenSiswa extends Model
     public function dicatatOleh(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dicatat_oleh');
+    }
+
+    public function notifikasiWa(): HasMany
+    {
+        return $this->hasMany(NotifikasiWa::class);
     }
 }

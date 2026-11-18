@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Guru;
 
+use App\Events\AbsenSiswaRecorded;
 use App\Http\Controllers\Controller;
 use App\Models\AbsenSiswa;
 use App\Models\Sesi;
@@ -106,7 +107,7 @@ class AbsenSesiController extends Controller
                 }
             }
 
-            AbsenSiswa::updateOrCreate(
+            $absenSiswa = AbsenSiswa::updateOrCreate(
                 ['sesi_id' => $sesi->id, 'siswa_id' => $item['siswa_id']],
                 [
                     'status' => $item['status'],
@@ -118,6 +119,10 @@ class AbsenSesiController extends Controller
                     'status_konfirmasi' => $statusKonfirmasi,
                 ]
             );
+
+            if (in_array($item['status'], ['A', 'S', 'I'])) {
+                event(new AbsenSiswaRecorded($absenSiswa, $user->id));
+            }
         }
 
         if (isset($validated['jurnal_kbm'])) {
