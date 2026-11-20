@@ -28,4 +28,9 @@ class Siswa extends Model
     {
         return $this->hasMany(AbsenSiswa::class);
     }
+
+    public function notifikasiWa(): HasMany
+    {
+        return $this->hasMany(NotifikasiWa::class);
+    }
 }

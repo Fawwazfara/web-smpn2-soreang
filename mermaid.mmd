@@ -180,11 +180,16 @@ erDiagram
         bigint absen_siswa_id FK "boleh kosong"
         bigint user_id FK "boleh kosong"
         string tujuan "nomor WhatsApp"
+        string no_wa "nomor WhatsApp (alias)"
         string tipe "alfa, sakit, izin"
+        string jenis_pesan "alfa, sakit, izin (alias)"
         text pesan
+        text isi_pesan "isi pesan (alias)"
         string status "antrian, terkirim, gagal"
+        string status_delivery "antrian, terkirim, gagal (alias)"
         string provider "fonnte"
         string provider_message_id
+        text response_payload "payload respons API gateway"
         datetime waktu
     }
 
