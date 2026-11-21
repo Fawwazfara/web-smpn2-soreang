@@ -15,6 +15,7 @@ use App\Http\Controllers\KonfirmasiOrtuController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MapelController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RekapAbsensiSiswaController;
 use App\Http\Controllers\TahunAjaranController;
 use App\Http\Controllers\UserController;
 use Illuminate\Foundation\Application;
@@ -132,6 +133,14 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/jadwal/versi/{jadwalVersi}/bulk-copy', [JadwalController::class, 'bulkCopySlots'])->name('jadwal.slot.bulk-copy');
 
     Route::post('/jadwal/generate-sesi', [JadwalController::class, 'generateSesi'])->name('jadwal.generate-sesi');
+
+    // Rekap Absensi Siswa (Admin)
+    Route::get('/admin/rekap-absensi/siswa', [RekapAbsensiSiswaController::class, 'index'])->name('admin.rekap-absensi.siswa');
+});
+
+Route::middleware(['auth', 'role:kepsek'])->group(function () {
+    // Rekap Absensi Siswa (Kepsek - Read Only)
+    Route::get('/kepsek/rekap-absensi/siswa', [RekapAbsensiSiswaController::class, 'index'])->name('kepsek.rekap-absensi.siswa');
 });
 
 require __DIR__.'/auth.php';

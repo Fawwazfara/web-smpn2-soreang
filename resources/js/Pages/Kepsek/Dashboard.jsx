@@ -11,6 +11,7 @@ export default function Dashboard({
     sesiStats = {},
     piketHariIni = [],
     aturanJam = {},
+    ringkasanSiswaHariIni = {},
 }) {
     const user = usePage().props.auth.user;
 
@@ -204,7 +205,163 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                {/* 2. Top 4 Executive KPI Cards */}
+                {/* 2. Ringkasan Kehadiran Siswa Hari Ini (Widget Eksekutif) */}
+                <div className="bg-[#E8EEFF] border border-[#C5CEE3] rounded-[26px] p-6 shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#C5CEE3]/80 pb-4">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full bg-[#006C4A] animate-pulse" />
+                                <h2 className="text-base font-extrabold text-[#111C2D]">
+                                    Ringkasan Kehadiran Siswa Hari Ini
+                                </h2>
+                            </div>
+                            <p className="text-xs text-[#3F463F] mt-1">
+                                Pemantauan agregat tingkat kehadiran siswa seluruh rombel berdasarkan sesi KBM hari ini.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href={route('kepsek.rekap-absensi.siswa')}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#002114] hover:bg-[#143823] text-white text-xs font-bold transition shadow-sm"
+                            >
+                                <span>Lihat Rekap Selengkapnya</span>
+                                <span>→</span>
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mt-5">
+                        {/* Rata-rata Kehadiran Siswa Hari Ini */}
+                        <div className="col-span-2 sm:col-span-1 lg:col-span-2 bg-[#143823] text-white rounded-2xl p-4 flex flex-col justify-between">
+                            <span className="text-[11px] font-bold text-[#82F5C1] uppercase tracking-wider">
+                                Kehadiran Siswa Hari Ini
+                            </span>
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <span className="text-3xl font-black text-white">
+                                    {ringkasanSiswaHariIni.persentase_kehadiran ?? 0}%
+                                </span>
+                                <span className="text-xs text-slate-300">rata-rata kehadiran</span>
+                            </div>
+                            <div className="mt-3 w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                                <div
+                                    className="bg-[#82F5C1] h-full rounded-full transition-all"
+                                    style={{ width: `${Math.min(100, Math.max(0, ringkasanSiswaHariIni.persentase_kehadiran ?? 0))}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Hadir */}
+                        <div className="bg-white border border-[#C5CEE3] rounded-2xl p-4 flex flex-col justify-between">
+                            <span className="text-[11px] font-bold text-[#006C4A] uppercase tracking-wider">Hadir (H)</span>
+                            <div className="mt-2">
+                                <span className="text-2xl font-black text-[#111C2D]">
+                                    {ringkasanSiswaHariIni.total_hadir ?? 0}
+                                </span>
+                                <span className="text-[11px] text-[#3F463F] block font-medium">siswa hadir</span>
+                            </div>
+                        </div>
+
+                        {/* Sakit */}
+                        <div className="bg-white border border-[#C5CEE3] rounded-2xl p-4 flex flex-col justify-between">
+                            <span className="text-[11px] font-bold text-[#111C2D] uppercase tracking-wider">Sakit (S)</span>
+                            <div className="mt-2">
+                                <span className="text-2xl font-black text-[#111C2D]">
+                                    {ringkasanSiswaHariIni.total_sakit ?? 0}
+                                </span>
+                                <span className="text-[11px] text-[#3F463F] block font-medium">izin sakit</span>
+                            </div>
+                        </div>
+
+                        {/* Izin */}
+                        <div className="bg-white border border-[#C5CEE3] rounded-2xl p-4 flex flex-col justify-between">
+                            <span className="text-[11px] font-bold text-[#263147] uppercase tracking-wider">Izin (I)</span>
+                            <div className="mt-2">
+                                <span className="text-2xl font-black text-[#111C2D]">
+                                    {ringkasanSiswaHariIni.total_izin ?? 0}
+                                </span>
+                                <span className="text-[11px] text-[#3F463F] block font-medium">keperluan izin</span>
+                            </div>
+                        </div>
+
+                        {/* Alfa */}
+                        <div className="bg-white border border-[#C5CEE3] rounded-2xl p-4 flex flex-col justify-between">
+                            <span className="text-[11px] font-bold text-[#C41E1E] uppercase tracking-wider">Alfa (A)</span>
+                            <div className="mt-2">
+                                <span className="text-2xl font-black text-[#C41E1E]">
+                                    {ringkasanSiswaHariIni.total_alfa ?? 0}
+                                </span>
+                                <span className="text-[11px] text-[#3F463F] block font-medium">tanpa keterangan</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Performa Kelas: Tertinggi & Terendah */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                        {/* Top Kehadiran Kelas */}
+                        <div className="bg-white/80 border border-[#C5CEE3] rounded-2xl p-4">
+                            <h3 className="text-xs font-bold text-[#111C2D] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-[#006C4A]" />
+                                Kelas dengan Kehadiran Tertinggi Hari Ini
+                            </h3>
+                            {(!ringkasanSiswaHariIni.kelas_tertinggi || ringkasanSiswaHariIni.kelas_tertinggi.length === 0) ? (
+                                <p className="text-xs text-[#3F463F] py-2">Belum ada data presensi kelas tercatat hari ini.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {ringkasanSiswaHariIni.kelas_tertinggi.map((k) => (
+                                        <div key={k.id} className="flex items-center justify-between text-xs py-1 border-b border-[#C5CEE3]/40 last:border-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-[#111C2D]">Kelas {k.nama}</span>
+                                                <span className="text-[11px] text-[#3F463F]">({k.total_hadir}/{k.total_absen} hadir)</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-black text-[#006C4A]">{k.persentase}%</span>
+                                                <Link
+                                                    href={`${route('kepsek.rekap-absensi.siswa')}?kelas_id=${k.id}`}
+                                                    className="text-[11px] text-[#143823] underline hover:text-[#006C4A]"
+                                                >
+                                                    Intip
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Kehadiran Terendah / Perlu Perhatian */}
+                        <div className="bg-white/80 border border-[#C5CEE3] rounded-2xl p-4">
+                            <h3 className="text-xs font-bold text-[#111C2D] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                                Kelas Perlu Perhatian (Kehadiran Terendah)
+                            </h3>
+                            {(!ringkasanSiswaHariIni.kelas_terendah || ringkasanSiswaHariIni.kelas_terendah.length === 0) ? (
+                                <p className="text-xs text-[#3F463F] py-2">Belum ada data presensi kelas tercatat hari ini.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {ringkasanSiswaHariIni.kelas_terendah.map((k) => (
+                                        <div key={k.id} className="flex items-center justify-between text-xs py-1 border-b border-[#C5CEE3]/40 last:border-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-[#111C2D]">Kelas {k.nama}</span>
+                                                <span className="text-[11px] text-[#3F463F]">({k.total_hadir}/{k.total_absen} hadir)</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`font-black ${k.persentase < 80 ? 'text-[#C41E1E]' : 'text-amber-600'}`}>{k.persentase}%</span>
+                                                <Link
+                                                    href={`${route('kepsek.rekap-absensi.siswa')}?kelas_id=${k.id}`}
+                                                    className="text-[11px] text-[#143823] underline hover:text-[#006C4A]"
+                                                >
+                                                    Intip
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Top 4 Executive KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     {/* KPI 1: Presensi Pegawai Hari Ini */}
                     <div className="rounded-2xl border border-[#C5CEE3] bg-[#E8EEFF]/40 p-5 shadow-2xs flex flex-col justify-between hover:bg-[#E8EEFF]/70 transition">

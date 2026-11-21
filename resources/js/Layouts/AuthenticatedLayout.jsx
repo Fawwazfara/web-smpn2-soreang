@@ -466,13 +466,13 @@ export default function AuthenticatedLayout({ header, children }) {
     return (
         <div className="min-h-screen bg-[#F4F7F6] text-slate-900 flex">
             {/* Desktop Fixed White Sidebar */}
-            <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-30 bg-white border-r border-[#E5ECE9]">
+            <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-30 bg-white border-r border-[#E5ECE9] print:hidden">
                 {renderSidebarContent()}
             </aside>
 
             {/* Mobile Sidebar Drawer */}
             {sidebarOpen && (
-                <div className="fixed inset-0 z-40 lg:hidden">
+                <div className="fixed inset-0 z-40 lg:hidden print:hidden">
                     <div
                         className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
                         onClick={() => setSidebarOpen(false)}
@@ -495,9 +495,9 @@ export default function AuthenticatedLayout({ header, children }) {
             )}
 
             {/* Main Workspace Canvas */}
-            <div className="flex-1 lg:pl-64 flex flex-col min-h-screen min-w-0">
+            <div className="flex-1 lg:pl-64 flex flex-col min-h-screen min-w-0 print:pl-0 print:m-0">
                 {/* Top Header Bar (Exact Match to Figma Image 1 & Screenshot 3) */}
-                <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-[#E5ECE9] bg-white px-4 sm:px-6 lg:px-7">
+                <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-[#E5ECE9] bg-white px-4 sm:px-6 lg:px-7 print:hidden">
                     {/* Left Area */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                         <button
@@ -716,13 +716,13 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* Optional Header Banner */}
                 {header && (
-                    <div className="bg-white border-b border-[#E5ECE9] px-4 py-4 sm:px-6 lg:px-8">
+                    <div className="bg-white border-b border-[#E5ECE9] px-4 py-4 sm:px-6 lg:px-8 print:hidden">
                         {header}
                     </div>
                 )}
 
                 {/* Main Canvas */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-7">
+                <main className="flex-1 p-4 sm:p-6 lg:p-7 print:p-0">
                     {children}
                 </main>
             </div>
