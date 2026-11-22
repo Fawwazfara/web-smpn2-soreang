@@ -283,7 +283,7 @@ class DashboardController extends Controller
         $todayIso = Carbon::now()->dayOfWeekIso;
         $isHolidayToday = HariLibur::whereDate('tanggal', $todayDate)->exists();
 
-        if ($todayIso >= 1 && $todayIso <= 6 && ! $isHolidayToday) {
+        if ($todayIso >= 1 && $todayIso <= 5 && ! $isHolidayToday) {
             $activeSlotsToday = JadwalSlot::query()
                 ->where('hari', $todayIso)
                 ->whereNotNull('guru_id')

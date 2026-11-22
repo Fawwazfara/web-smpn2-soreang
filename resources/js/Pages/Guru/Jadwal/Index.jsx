@@ -181,7 +181,7 @@ export default function JadwalIndex({
                                 : 'bg-[#E8EEFF] text-[#111C2D] hover:bg-[#CFD9F0]'
                         }`}
                     >
-                        Jadwal Mingguan (Senin – Sabtu)
+                        Jadwal Mingguan (Senin – Jumat)
                     </button>
                 </div>
 
@@ -261,7 +261,6 @@ export default function JadwalIndex({
                     </div>
                 )}
 
-                {/* Konten Tab 2: Jadwal Mingguan (Senin s/d Sabtu) */}
                 {tabAktif === 'mingguan' && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -269,12 +268,12 @@ export default function JadwalIndex({
                                 Matriks Mengajar Mingguan
                             </h2>
                             <span className="text-xs text-[#3F463F] font-semibold">
-                                Senin – Sabtu
+                                Senin – Jumat
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {[1, 2, 3, 4, 5, 6].map((hari) => {
+                            {[1, 2, 3, 4, 5].map((hari) => {
                                 const slots = jadwalMingguan[hari] ?? [];
                                 const isToday = hari === hariIniIso;
 

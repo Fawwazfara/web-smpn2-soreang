@@ -165,6 +165,24 @@ class AdminGuruPiketTest extends TestCase
         ]);
     }
 
+    public function test_cannot_assign_guru_piket_on_saturday_or_sunday(): void
+    {
+        foreach ([6, 7] as $weekendDay) {
+            $response = $this->actingAs($this->admin)->post(route('admin.guru-piket.store'), [
+                'tahun_ajaran_id' => $this->tahunAjaran->id,
+                'hari' => $weekendDay,
+                'user_id' => $this->guruPiket->id,
+            ]);
+
+            $response->assertSessionHasErrors('hari');
+            $this->assertDatabaseMissing('guru_piket', [
+                'tahun_ajaran_id' => $this->tahunAjaran->id,
+                'hari' => $weekendDay,
+                'user_id' => $this->guruPiket->id,
+            ]);
+        }
+    }
+
     public function test_admin_can_delete_guru_piket_assignment(): void
     {
         $piket = GuruPiket::create([

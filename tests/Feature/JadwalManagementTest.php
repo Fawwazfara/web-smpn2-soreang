@@ -211,4 +211,67 @@ class JadwalManagementTest extends TestCase
         ]);
         $this->assertStringStartsWith('2026-11-02', (string) \App\Models\Sesi::first()->tanggal);
     }
+
+    public function test_admin_cannot_store_jadwal_slot_on_saturday_or_sunday(): void
+    {
+        $versi = JadwalVersi::create([
+            'nama' => 'Versi Test',
+            'berlaku_mulai' => '2026-11-01',
+            'berlaku_sampai' => '2026-12-31',
+            'status' => 'draf',
+        ]);
+
+        foreach ([6, 7] as $weekendDay) {
+            $response = $this->actingAs($this->admin)->post(route('jadwal.slot.store', $versi->id), [
+                'hari' => $weekendDay,
+                'jam_pelajaran_id' => $this->jamPelajaran->id,
+                'kelas_id' => $this->kelas->id,
+                'mapel_id' => $this->mapel->id,
+                'guru_id' => $this->guru->id,
+            ]);
+
+            $response->assertSessionHasErrors('hari');
+            $this->assertDatabaseMissing('jadwal_slot', [
+                'versi_id' => $versi->id,
+                'hari' => $weekendDay,
+            ]);
+        }
+    }
+
+    public function test_generate_sesi_skips_saturday_and_sunday(): void
+    {
+        $versi = JadwalVersi::create([
+            'nama' => 'Versi Aktif Weekend',
+            'berlaku_mulai' => '2026-11-01',
+            'berlaku_sampai' => '2026-12-31',
+            'status' => 'aktif',
+        ]);
+
+        JadwalSlot::create([
+            'versi_id' => $versi->id,
+            'hari' => 5,
+            'jam_pelajaran_id' => $this->jamPelajaran->id,
+            'kelas_id' => $this->kelas->id,
+            'mapel_id' => $this->mapel->id,
+            'guru_id' => $this->guru->id,
+        ]);
+
+        JadwalSlot::create([
+            'versi_id' => $versi->id,
+            'hari' => 6,
+            'jam_pelajaran_id' => $this->jamPelajaran->id,
+            'kelas_id' => $this->kelas->id,
+            'mapel_id' => $this->mapel->id,
+            'guru_id' => $this->guru->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(route('jadwal.generate-sesi'), [
+            'tanggal_mulai' => '2026-11-06',
+            'tanggal_selesai' => '2026-11-08',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(1, Sesi::count());
+        $this->assertStringStartsWith('2026-11-06', (string) Sesi::first()->tanggal);
+    }
 }

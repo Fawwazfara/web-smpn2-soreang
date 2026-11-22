@@ -336,7 +336,7 @@ class JadwalController extends Controller
             return back()->with('error', 'Versi jadwal yang sudah AKTIF tidak dapat diedit. Silakan buat versi baru (Draf) untuk melakukan perubahan.');
         }
         $validated = $request->validate([
-            'hari' => ['required', 'integer', 'min:1', 'max:6'],
+            'hari' => ['required', 'integer', 'min:1', 'max:5'],
             'jam_pelajaran_id' => ['required', 'exists:jam_pelajaran,id'],
             'kelas_id' => ['required', 'exists:kelas,id'],
             'mapel_id' => ['required', 'exists:mapel,id'],
@@ -545,14 +545,11 @@ class JadwalController extends Controller
         $current = $startDate->copy();
 
         while ($current->lte($endDate)) {
-            // Check if day is Sunday (Carbon dayOfWeek: 0 = Sunday, 1 = Monday ... 6 = Saturday)
-            // In our system, hari: 1 = Senin, 2 = Selasa, 3 = Rabu, 4 = Kamis, 5 = Jumat, 6 = Sabtu, 7/0 = Minggu.
-            $dayOfWeek = $current->dayOfWeekIso; // 1 (Monday) to 7 (Sunday)
+            $dayOfWeek = $current->dayOfWeekIso;
 
-            // Skip Sunday or holidays
             $isHoliday = HariLibur::whereDate('tanggal', $current->toDateString())->exists();
 
-            if ($dayOfWeek >= 1 && $dayOfWeek <= 6 && !$isHoliday) {
+            if ($dayOfWeek >= 1 && $dayOfWeek <= 5 && !$isHoliday) {
                 // Find slots for this day of week
                 $daySlots = $slots->where('hari', $dayOfWeek);
 

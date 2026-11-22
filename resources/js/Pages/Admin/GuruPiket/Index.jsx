@@ -14,7 +14,6 @@ const HARI_LIST = [
     { id: 3, nama: 'Rabu', label: 'Rabu' },
     { id: 4, nama: 'Kamis', label: 'Kamis' },
     { id: 5, nama: 'Jumat', label: 'Jumat' },
-    { id: 6, nama: 'Sabtu', label: 'Sabtu' },
 ];
 
 export default function Index({
@@ -118,7 +117,7 @@ export default function Index({
                             Kelola Jadwal Penugasan Guru Piket
                         </h1>
                         <p className="text-sm text-[#3F463F] mt-1">
-                            Atur pembagian penugasan guru piket harian (Senin s/d Sabtu) untuk siap melayani penggantian jam belajar.
+                            Atur pembagian penugasan guru piket harian (Senin s/d Jumat) untuk siap melayani penggantian jam belajar.
                         </p>
                     </div>
 
@@ -308,12 +307,11 @@ export default function Index({
                             )}
                         </div>
 
-                        {/* Weekly Matrix Overview (Senin - Sabtu in columns) */}
                         <div className="bg-[#E8EEFF] rounded-[24px] border border-[#C5CEE3] p-6 shadow-sm space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h2 className="text-base font-bold text-[#111C2D]">
-                                        Ringkasan Matriks Mingguan (Senin - Sabtu)
+                                        Ringkasan Matriks Mingguan (Senin - Jumat)
                                     </h2>
                                     <p className="text-xs text-[#3F463F]">
                                         Rekap cepat distribusi petugas piket sepanjang minggu aktif.
@@ -321,7 +319,7 @@ export default function Index({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                                 {HARI_LIST.map((h) => {
                                     const pikets = getPiketByHari(h.id);
                                     return (

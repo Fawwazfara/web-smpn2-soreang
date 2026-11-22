@@ -20,6 +20,8 @@ class GuruPiketTodayTest extends TestCase
     {
         parent::setUp();
 
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 8, 0, 0, config('absensi.timezone', 'Asia/Jakarta')));
+
         $this->guru = User::factory()->create([
             'role' => 'guru',
             'aktif' => true,
@@ -34,10 +36,17 @@ class GuruPiketTodayTest extends TestCase
         ]);
     }
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_only_assigned_guru_piket_for_today_and_active_year_appears_on_guru_dashboard(): void
     {
         $todayIso = Carbon::now()->dayOfWeekIso;
-        $otherDayIso = $todayIso === 6 ? 1 : $todayIso + 1;
+        $otherDayIso = $todayIso === 5 ? 1 : $todayIso + 1;
 
         // Guru Piket bertugas hari ini
         $piketToday = User::factory()->create([
