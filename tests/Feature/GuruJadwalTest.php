@@ -164,47 +164,55 @@ class GuruJadwalTest extends TestCase
         $response->assertStatus(200);
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Guru/Jadwal/Index')
-            ->has('jadwalMingguan.1', 1) // Hari 1 hanya ada 1 slot milik Guru A
+            ->has('jadwalMingguan', 5)
+            ->has('jadwalMingguan.1', 1)
             ->where('jadwalMingguan.1.0.mapel.kode', 'MAT01')
-            ->has('jadwalMingguan.2', 0) // Hari 2 versi draf tidak masuk
+            ->has('jadwalMingguan.2', 0)
+            ->missing('jadwalMingguan.6')
         );
     }
 
     public function test_piket_hari_ini_is_loaded_with_clean_wa_and_link(): void
     {
-        $guru = User::factory()->create(['role' => 'guru', 'aktif' => true]);
-        $hariIniIso = Carbon::now()->dayOfWeekIso;
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 8, 0, 0, config('absensi.timezone', 'Asia/Jakarta')));
 
-        $tahunAjaran = TahunAjaran::create([
-            'nama' => '2026/2027',
-            'semester' => 'Ganjil',
-            'tanggal_mulai' => '2026-07-01',
-            'tanggal_selesai' => '2026-12-31',
-            'aktif' => true,
-        ]);
+        try {
+            $guru = User::factory()->create(['role' => 'guru', 'aktif' => true]);
+            $hariIniIso = Carbon::now()->dayOfWeekIso;
 
-        $guruPiket = User::factory()->create([
-            'nama' => 'Pak Ahmad Piket',
-            'role' => 'guru_piket',
-            'no_wa' => '0812-3456-7890',
-            'aktif' => true,
-        ]);
+            $tahunAjaran = TahunAjaran::create([
+                'nama' => '2026/2027',
+                'semester' => 'Ganjil',
+                'tanggal_mulai' => '2026-07-01',
+                'tanggal_selesai' => '2026-12-31',
+                'aktif' => true,
+            ]);
 
-        GuruPiket::create([
-            'user_id' => $guruPiket->id,
-            'hari' => $hariIniIso,
-            'tahun_ajaran_id' => $tahunAjaran->id,
-        ]);
+            $guruPiket = User::factory()->create([
+                'nama' => 'Pak Ahmad Piket',
+                'role' => 'guru_piket',
+                'no_wa' => '0812-3456-7890',
+                'aktif' => true,
+            ]);
 
-        $response = $this->actingAs($guru)->get(route('guru.jadwal.index'));
+            GuruPiket::create([
+                'user_id' => $guruPiket->id,
+                'hari' => $hariIniIso,
+                'tahun_ajaran_id' => $tahunAjaran->id,
+            ]);
 
-        $response->assertStatus(200);
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Guru/Jadwal/Index')
-            ->has('piketHariIni', 1)
-            ->where('piketHariIni.0.user.clean_wa', '6281234567890')
-            ->where('piketHariIni.0.user.wa_link', 'https://wa.me/6281234567890')
-        );
+            $response = $this->actingAs($guru)->get(route('guru.jadwal.index'));
+
+            $response->assertStatus(200);
+            $response->assertInertia(fn (Assert $page) => $page
+                ->component('Guru/Jadwal/Index')
+                ->has('piketHariIni', 1)
+                ->where('piketHariIni.0.user.clean_wa', '6281234567890')
+                ->where('piketHariIni.0.user.wa_link', 'https://wa.me/6281234567890')
+            );
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 }
 

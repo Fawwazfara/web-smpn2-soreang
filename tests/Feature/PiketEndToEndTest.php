@@ -18,6 +18,20 @@ class PiketEndToEndTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 8, 0, 0, config('absensi.timezone', 'Asia/Jakarta')));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_full_piket_replacement_and_unlock_lifecycle(): void
     {
         $todayIso = Carbon::now()->dayOfWeekIso;

@@ -15,7 +15,6 @@ const HARI_NAMES = {
     3: 'Rabu',
     4: 'Kamis',
     5: 'Jumat',
-    6: 'Sabtu',
 };
 
 const MAPEL_CATEGORIES = {
@@ -578,7 +577,7 @@ export default function Index({ versions, selectedVersion, slots, kelasList, map
                                         onChange={(e) => handleHariChange(Number(e.target.value))}
                                         className="w-32 rounded-xl border-[#C5CEE3] bg-[#E8EEFF] text-xs font-semibold text-[#111C2D] px-3 py-1.5 focus:border-[#006C4A] focus:ring-[#006C4A]"
                                     >
-                                        {[1,2,3,4,5,6].map(h => (
+                                        {[1, 2, 3, 4, 5].map(h => (
                                             <option key={h} value={h}>{HARI_NAMES[h]}</option>
                                         ))}
                                     </select>
@@ -592,7 +591,7 @@ export default function Index({ versions, selectedVersion, slots, kelasList, map
                                     <tr className="bg-[#E8EEFF] text-[#111C2D] text-xs font-bold border-b border-[#C5CEE3]">
                                         <th className="p-3.5 text-center w-20 sticky left-0 z-20">Jam Ke</th>
                                         <th className="p-3.5 w-28 sticky left-20 z-10 border-l-2 border-emerald-500/20">Waktu</th>
-                                        {[1, 2, 3, 4, 5, 6].map(hari => (
+                                        {[1, 2, 3, 4, 5].map(hari => (
                                             <th key={hari} className="p-3.5 text-center min-w-[160px] sticky top-0 z-10">
                                                 {HARI_NAMES[hari]}
                                             </th>
@@ -609,7 +608,7 @@ export default function Index({ versions, selectedVersion, slots, kelasList, map
                                                 <td className="p-2.5 text-slate-500 font-mono text-[11px] bg-slate-50/50 sticky left-20 z-10 w-28 border-l-2 border-emerald-500/20">
                                                     {jam.mulai?.slice(0, 5)} - {jam.selesai?.slice(0, 5)}
                                                 </td>
-                                                {[1, 2, 3, 4, 5, 6].map(hari => {
+                                                {[1, 2, 3, 4, 5].map(hari => {
                                                     const fullJams = (allJamList && allJamList.length > 0) ? allJamList : jamList;
                                                     const currentJam = fullJams.find(j => j.hari === hari && j.jam_ke === jam.jam_ke) || jam;
                                                     const slot = slotMatrix[hari]?.[jam.jam_ke]?.[selectedKelasFilter];

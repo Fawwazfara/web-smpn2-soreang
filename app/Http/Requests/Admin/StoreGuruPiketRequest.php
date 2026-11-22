@@ -28,7 +28,7 @@ class StoreGuruPiketRequest extends FormRequest
 
         return [
             'tahun_ajaran_id' => ['required', 'exists:tahun_ajaran,id'],
-            'hari' => ['required', 'integer', 'between:1,6'],
+            'hari' => ['required', 'integer', 'between:1,5'],
             'user_id' => [
                 'required',
                 Rule::exists('users', 'id')->where(function ($query) {
@@ -56,7 +56,7 @@ class StoreGuruPiketRequest extends FormRequest
             'tahun_ajaran_id.required' => 'Tahun ajaran wajib dipilih.',
             'tahun_ajaran_id.exists' => 'Tahun ajaran tidak valid.',
             'hari.required' => 'Hari piket wajib dipilih.',
-            'hari.between' => 'Hari piket harus di antara Senin (1) sampai Sabtu (6).',
+            'hari.between' => 'Hari piket harus di antara Senin (1) sampai Jumat (5).',
             'user_id.required' => 'Guru piket wajib dipilih.',
             'user_id.exists' => 'Guru yang dipilih harus berstatus aktif dengan role guru piket dan memiliki nomor WhatsApp valid.',
             'user_id.unique' => 'Guru piket tersebut sudah ditugaskan pada hari dan tahun ajaran ini.',

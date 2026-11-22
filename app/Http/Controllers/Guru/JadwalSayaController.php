@@ -71,9 +71,8 @@ class JadwalSayaController extends Controller
                 ->values();
         }
 
-        // a. jadwalMingguan: dikelompokkan per hari (1: Senin s/d 6: Sabtu)
         $jadwalMingguan = [];
-        for ($h = 1; $h <= 6; $h++) {
+        for ($h = 1; $h <= 5; $h++) {
             $jadwalMingguan[$h] = $jadwalSlots->where('hari', $h)->values();
         }
 

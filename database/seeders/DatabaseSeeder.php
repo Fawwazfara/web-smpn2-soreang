@@ -147,7 +147,7 @@ class DatabaseSeeder extends Seeder
         }
 
         if ($piketUser) {
-            for ($hari = 1; $hari <= 6; $hari++) {
+            for ($hari = 1; $hari <= 5; $hari++) {
                 GuruPiket::updateOrCreate(
                     [
                         'tahun_ajaran_id' => $tahunAjaran->id,
@@ -175,7 +175,7 @@ class DatabaseSeeder extends Seeder
                 ['kelas' => 'IX-A', 'jam_ke' => 4, 'mapel' => 'BIN'],
             ];
 
-            for ($hari = 1; $hari <= 6; $hari++) {
+            for ($hari = 1; $hari <= 5; $hari++) {
                 foreach ($slotConfigs as $cfg) {
                     JadwalSlot::updateOrCreate(
                         [
@@ -193,7 +193,7 @@ class DatabaseSeeder extends Seeder
             }
 
             $todayDate = Carbon::today()->toDateString();
-            $todayIso = min(6, max(1, Carbon::now()->dayOfWeekIso));
+            $todayIso = min(5, max(1, Carbon::now()->dayOfWeekIso));
 
             foreach ($slotConfigs as $cfg) {
                 $slot = JadwalSlot::where('versi_id', $jadwalVersi->id)
