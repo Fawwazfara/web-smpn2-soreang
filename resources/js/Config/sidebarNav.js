@@ -42,6 +42,7 @@ export const SIDEBAR_NAV = {
             title: 'ATTENDANCE',
             items: [
                 { label: 'Presensi Guru (Geofence)', route: 'absen-harian.rekap', icon: 'map-pin' },
+                { label: 'Rekap Presensi Siswa', route: 'admin.rekap-absensi.siswa', icon: 'checklist', activePattern: 'admin.rekap-absensi.*' },
                 { label: 'Presensi Siswa', route: null, icon: 'checklist' },
                 { label: 'Rekap & Laporan', route: null, icon: 'doc-fold' },
             ],
@@ -86,7 +87,7 @@ export const SIDEBAR_NAV = {
             items: [
                 { label: 'Dashboard Monitoring', route: 'dashboard', icon: 'grid-4' },
                 { label: 'Rekap Presensi Pegawai', route: 'absen-harian.rekap', icon: 'map-pin' },
-                { label: 'Rekap Presensi Siswa', route: null, icon: 'checklist' },
+                { label: 'Rekap Presensi Siswa', route: 'kepsek.rekap-absensi.siswa', icon: 'checklist', activePattern: 'kepsek.rekap-absensi.*' },
             ],
         },
     ],

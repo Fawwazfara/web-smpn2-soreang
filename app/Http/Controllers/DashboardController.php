@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AbsenHarian;
+use App\Models\AbsenSiswa;
 use App\Models\GuruPiket;
 use App\Models\HariLibur;
 use App\Models\JadwalSlot;
@@ -190,6 +191,63 @@ class DashboardController extends Controller
                 ];
             });
 
+            // Ringkasan Kehadiran Siswa Hari Ini untuk Kepsek
+            $absenSiswaHariIni = AbsenSiswa::query()
+                ->whereHas('sesi', function ($q) use ($todayStr) {
+                    $q->whereDate('tanggal', $todayStr);
+                })
+                ->get(['id', 'sesi_id', 'siswa_id', 'status']);
+
+            $totalSiswaH = $absenSiswaHariIni->where('status', 'H')->count();
+            $totalSiswaS = $absenSiswaHariIni->where('status', 'S')->count();
+            $totalSiswaI = $absenSiswaHariIni->where('status', 'I')->count();
+            $totalSiswaA = $absenSiswaHariIni->where('status', 'A')->count();
+            $totalSiswaAbsen = $totalSiswaH + $totalSiswaS + $totalSiswaI + $totalSiswaA;
+            $persentaseKehadiranSiswaHariIni = $totalSiswaAbsen > 0
+                ? round(($totalSiswaH / $totalSiswaAbsen) * 100, 1)
+                : 0;
+
+            // Hitung statistik kehadiran siswa per kelas hari ini
+            $sesiHariIniGroupedByKelas = Sesi::query()
+                ->whereDate('tanggal', $todayStr)
+                ->whereIn('kelas_id', $kelasAktifList->pluck('id'))
+                ->with(['absenSiswa:id,sesi_id,status'])
+                ->get()
+                ->groupBy('kelas_id');
+
+            $kelasRanking = $kelasAktifList->map(function ($k) use ($sesiHariIniGroupedByKelas) {
+                $sesiList = $sesiHariIniGroupedByKelas->get($k->id, collect());
+                $allAbsen = $sesiList->flatMap->absenSiswa;
+                $h = $allAbsen->where('status', 'H')->count();
+                $total = $allAbsen->count();
+                $pct = $total > 0 ? round(($h / $total) * 100, 1) : 0;
+
+                return [
+                    'id' => $k->id,
+                    'nama' => $k->nama,
+                    'tingkat' => $k->tingkat,
+                    'total_siswa' => $k->siswa_count ?? 0,
+                    'total_absen' => $total,
+                    'total_hadir' => $h,
+                    'persentase' => $pct,
+                ];
+            });
+
+            $kelasTertinggi = $kelasRanking->filter(fn ($k) => $k['total_absen'] > 0)->sortByDesc('persentase')->take(3)->values();
+            $kelasTerendah = $kelasRanking->filter(fn ($k) => $k['total_absen'] > 0)->sortBy('persentase')->take(3)->values();
+
+            $ringkasanSiswaHariIni = [
+                'total_hadir' => $totalSiswaH,
+                'total_sakit' => $totalSiswaS,
+                'total_izin' => $totalSiswaI,
+                'total_alfa' => $totalSiswaA,
+                'total_rekaman' => $totalSiswaAbsen,
+                'persentase_kehadiran' => $persentaseKehadiranSiswaHariIni,
+                'kelas_tertinggi' => $kelasTertinggi,
+                'kelas_terendah' => $kelasTerendah,
+                'kelas_ranking' => $kelasRanking->values(),
+            ];
+
             return Inertia::render('Kepsek/Dashboard', [
                 'stats' => array_merge([
                     'total_guru' => User::where('role', 'guru')->count(),
@@ -210,6 +268,7 @@ class DashboardController extends Controller
                 'sesiStats' => $sesiStats,
                 'piketHariIni' => $piketAktif,
                 'aturanJam' => $aturanJam,
+                'ringkasanSiswaHariIni' => $ringkasanSiswaHariIni,
             ]);
         }
 
