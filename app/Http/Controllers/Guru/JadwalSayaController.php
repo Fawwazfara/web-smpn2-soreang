@@ -78,7 +78,7 @@ class JadwalSayaController extends Controller
 
         // b. jadwalHariIni: slot khusus hari ini (disertai status sesi jika sesi hari ini sudah ada)
         $sesiHariIni = Sesi::query()
-            ->where('tanggal', $tanggalHariIni)
+            ->whereDate('tanggal', $tanggalHariIni)
             ->where(function ($q) use ($user) {
                 $q->where('guru_id', $user->id)
                     ->orWhere('guru_pengganti_id', $user->id);

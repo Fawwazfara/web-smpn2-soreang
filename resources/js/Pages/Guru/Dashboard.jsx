@@ -1032,11 +1032,20 @@ export default function Dashboard({
                                                 </div>
                                             ) : (
                                                 <>
+                                                    <Link
+                                                        href={route('guru.absen-sesi.show', primarySesi.id)}
+                                                        className="sm:col-span-2 w-full rounded-xl bg-[#046C4E] py-3.5 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#03583F] transition flex items-center justify-center gap-2"
+                                                    >
+                                                        <svg className="w-4 h-4 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        Buka Form Absen Siswa Kelas {primarySesi.kelas?.nama ?? '-'}
+                                                    </Link>
                                                     <button
                                                         type="button"
                                                         onClick={() => handleGenerateKode(primarySesi)}
                                                         disabled={generatingSesi === primarySesi.id}
-                                                        className="w-full rounded-xl bg-[#0F382A] py-3.5 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#164B38] disabled:opacity-50 transition flex items-center justify-center gap-2"
+                                                        className="w-full rounded-xl bg-[#0F382A] py-3 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#164B38] disabled:opacity-50 transition flex items-center justify-center gap-2"
                                                     >
                                                         <svg className="w-4 h-4 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818" />
@@ -1050,7 +1059,7 @@ export default function Dashboard({
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowPiketModal(true)}
-                                                        className="w-full rounded-xl bg-[#046C4E] py-3.5 px-4 text-xs font-bold text-white shadow-xs hover:bg-[#03583F] transition flex items-center justify-center gap-2"
+                                                        className="w-full rounded-xl border border-[#0E7452] bg-[#E6F5EE] py-3 px-4 text-xs font-bold text-[#0E7452] hover:bg-[#D5EFE4] transition flex items-center justify-center gap-2"
                                                     >
                                                         Hubungi Guru Piket Bertugas
                                                     </button>
@@ -1154,44 +1163,54 @@ export default function Dashboard({
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                                                <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-auto">
                                                     {isReplaced ? (
                                                         <span className="rounded-lg bg-[#E6F5EE] px-3 py-1.5 text-xs font-bold text-[#0E7452]">
                                                             ✓ Sudah Digantikan
                                                         </span>
-                                                    ) : sesi.active_kode ? (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleOpenExistingKode(sesi)}
-                                                                className="rounded-lg border border-[#0E7452] bg-[#E6F5EE] hover:bg-[#D5EFE4] text-[#0E7452] px-3 py-1.5 text-xs font-bold transition"
-                                                            >
-                                                                Lihat Kode
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleGenerateKode(sesi)}
-                                                                disabled={generatingSesi === sesi.id}
-                                                                className="rounded-lg bg-[#0F382A] hover:bg-[#164B38] text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-                                                            >
-                                                                <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                                                                </svg>
-                                                                {generatingSesi === sesi.id ? 'Membuat...' : 'Buat Ulang'}
-                                                            </button>
-                                                        </div>
                                                     ) : (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleGenerateKode(sesi)}
-                                                            disabled={generatingSesi === sesi.id}
-                                                            className="rounded-lg bg-[#0F382A] hover:bg-[#164B38] text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-                                                        >
-                                                            <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818" />
-                                                            </svg>
-                                                            {generatingSesi === sesi.id ? 'Membuat...' : 'Generate Kode Piket'}
-                                                        </button>
+                                                        <>
+                                                            <Link
+                                                                href={route('guru.absen-sesi.show', sesi.id)}
+                                                                className="rounded-lg bg-[#046C4E] hover:bg-[#03583F] text-white px-3 py-1.5 text-xs font-bold transition shadow-xs"
+                                                            >
+                                                                Absen Siswa
+                                                            </Link>
+                                                            {sesi.active_kode ? (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleOpenExistingKode(sesi)}
+                                                                        className="rounded-lg border border-[#0E7452] bg-[#E6F5EE] hover:bg-[#D5EFE4] text-[#0E7452] px-3 py-1.5 text-xs font-bold transition"
+                                                                    >
+                                                                        Lihat Kode
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleGenerateKode(sesi)}
+                                                                        disabled={generatingSesi === sesi.id}
+                                                                        className="rounded-lg bg-[#0F382A] hover:bg-[#164B38] text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
+                                                                    >
+                                                                        <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                                        </svg>
+                                                                        {generatingSesi === sesi.id ? 'Membuat...' : 'Buat Ulang'}
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleGenerateKode(sesi)}
+                                                                    disabled={generatingSesi === sesi.id}
+                                                                    className="rounded-lg bg-[#0F382A] hover:bg-[#164B38] text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
+                                                                >
+                                                                    <svg className="w-3.5 h-3.5 text-[#8CE9BE]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818" />
+                                                                    </svg>
+                                                                    {generatingSesi === sesi.id ? 'Membuat...' : 'Generate Kode Piket'}
+                                                                </button>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>

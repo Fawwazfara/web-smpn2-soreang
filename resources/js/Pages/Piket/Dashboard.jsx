@@ -505,20 +505,30 @@ export default function Dashboard({
                         )}
 
                         {activeUnlockedNotice && (
-                            <div className="rounded-[14px] border border-[#006C4A]/40 bg-[#82F5C1]/30 p-3.5 flex items-center justify-between gap-3 text-xs text-[#002114]">
+                            <div className="rounded-[14px] border border-[#006C4A]/40 bg-[#82F5C1]/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#002114]">
                                 <div>
                                     <strong>Sesi Terbuka (Guru Pengganti):</strong> Kelas{' '}
                                     <strong>{activeUnlockedNotice.kelas?.nama}</strong> • Mapel{' '}
                                     <strong>{activeUnlockedNotice.mapel?.nama}</strong> (Jam Ke-
-                                    {activeUnlockedNotice.jam_pelajaran?.jam_ke}). Form input absen siswa oleh guru piket disambungkan pada modul <strong>T16</strong>.
+                                    {activeUnlockedNotice.jam_pelajaran?.jam_ke}). Silakan isi daftar hadir siswa sebagai guru pengganti.
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveUnlockedNotice(null)}
-                                    className="font-bold text-[#002114] hover:opacity-70 px-1.5"
-                                >
-                                    ✕
-                                </button>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {activeUnlockedNotice.id && (
+                                        <Link
+                                            href={route('guru.absen-sesi.show', activeUnlockedNotice.id)}
+                                            className="rounded-[8px] bg-[#002114] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#143823] transition"
+                                        >
+                                            Isi Presensi Siswa →
+                                        </Link>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveUnlockedNotice(null)}
+                                        className="font-bold text-[#002114] hover:opacity-70 px-1.5"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
                         )}
 
@@ -628,16 +638,15 @@ export default function Dashboard({
                                                         Masukkan Kode 6-Digit untuk Membuka Sesi
                                                     </button>
                                                 ) : (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setActiveUnlockedNotice(sesi)}
+                                                    <Link
+                                                        href={route('guru.absen-sesi.show', sesi.id)}
                                                         className="w-full rounded-[8px] bg-[#006C4A] hover:bg-[#002114] text-white py-2.5 px-3 text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs"
                                                     >
                                                         <svg className="w-4 h-4 text-[#82F5C1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
                                                         Mulai Absen Siswa
-                                                    </button>
+                                                    </Link>
                                                 )}
                                             </div>
                                         </div>

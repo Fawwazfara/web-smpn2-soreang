@@ -90,7 +90,14 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
   - Dilarang membuat PR dalam kondisi branch tertinggal dari `main` atau masih ada conflict, karena akan menyebabkan pipeline CI/Jenkins merah (`This commit cannot be built`).
 
 ## Progress & laporan
-- Status: **prototype**. Skema dasar sudah tersedia lewat migrasi, termasuk `absen_harian`, `kode_pengganti`, dan `notifikasi_wa`. Modul yang sudah ada: autentikasi + manajemen pengguna dasar oleh admin. Fitur absensi belum dibuat.
+- Status: **Terintegrasi & Siap Demo (Integrasi, QA & Seeder Demo Selesai)**. Seluruh modul utama telah terhubung end-to-end:
+  - **Autentikasi, Role & Manajemen Akun**: Login berbasis NIP/NUPTK (`username`), 4 role (`admin`, `guru` dengan `jenis_pegawai`, `guru_piket`, `kepsek` read-only), wajib ganti password awal, dan manajemen akun oleh Admin.
+  - **Landing Page & CMS Pengumuman**: Halaman publik sekolah, berita/pengumuman dengan fitur pin berita di slider beranda.
+  - **Data Master & Penjadwalan KBM**: CRUD Tahun Ajaran (1 aktif), Kelas & Wali Kelas, Mata Pelajaran & Slot Jam Pelajaran, Matriks Jadwal KBM ber-versi (`draf`/`aktif`/`arsip`), auto-generate sesi harian, serta Penugasan Guru Piket harian.
+  - **Absen Harian Pegawai (Live Camera & Face Verification)**: Presensi masuk/pulang wajib kamera langsung (tanpa upload galeri) untuk `guru`, `tenaga_kependidikan`, dan `guru_piket`, disertai rekap presensi harian.
+  - **Absen Siswa per Sesi (T10) & Penggantian Guru Piket (T12)**: Jadwal mengajar guru & kontak WA guru piket (`wa.me`), generate kode unik 6-digit per sesi oleh guru pengampu, klaim kode 6-digit di Dashboard Guru Piket untuk membuka kunci sesi (`terkunci` -> `terbuka`), serta integrasi langsung ke form input absen siswa (`H`, `S`, `I`, `A` + jurnal KBM) sebagai **Guru Pengganti** dengan tampilan responsif HP (kartu) & laptop (tabel).
+  - **Konfirmasi Orang Tua (T13) & Notifikasi WhatsApp Fonnte (T14)**: Token konfirmasi publik sekali pakai (berlaku 1 minggu) untuk unggah bukti Sakit/Izin tanpa login, serta pengiriman WA otomatis via Fonnte (anti-spam dedupe 1x/murid/hari + random delay + pencatatan di `notifikasi_wa`).
+  - **Monitoring Eksekutif Kepsek (T09) & Rekap Absensi Siswa (T15)**: Dashboard monitoring real-time read-only untuk Kepala Sekolah, rekapitulasi absensi siswa per kelas & rentang tanggal untuk Admin dan Kepsek, serta `DatabaseSeeder` lengkap untuk demo seluruh role.
 - Keputusan terbaru ada di `docs/PRD.md` Bagian 9. Poin yang masih terbuka ada di Bagian 10: batasan monitoring admin, aturan jam absen harian, token konfirmasi, reset password akun tanpa email, dan paket fonnte produksi.
 - Setiap selesai satu bagian, AI **wajib melaporkan** ke user: apa yang dibuat (file/fitur), apa yang diubah, dan apa yang perlu dikonfirmasi. Jangan lanjut ke pekerjaan berikutnya sebelum dikonfirmasi.
 - Rencana pembagian fitur, checklist, dan pengerjaan detail dicatat PM saat sudah ditentukan.

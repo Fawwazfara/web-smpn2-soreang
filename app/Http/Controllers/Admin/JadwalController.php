@@ -554,19 +554,22 @@ class JadwalController extends Controller
                 $daySlots = $slots->where('hari', $dayOfWeek);
 
                 foreach ($daySlots as $slot) {
-                    Sesi::firstOrCreate(
-                        [
+                    $exists = Sesi::whereDate('tanggal', $current->toDateString())
+                        ->where('kelas_id', $slot->kelas_id)
+                        ->where('jam_pelajaran_id', $slot->jam_pelajaran_id)
+                        ->exists();
+
+                    if (! $exists) {
+                        Sesi::create([
                             'tanggal' => $current->toDateString(),
                             'kelas_id' => $slot->kelas_id,
                             'jam_pelajaran_id' => $slot->jam_pelajaran_id,
-                        ],
-                        [
                             'mapel_id' => $slot->mapel_id,
                             'guru_id' => $slot->guru_id,
                             'slot_id' => $slot->id,
                             'status' => 'terjadwal',
-                        ]
-                    );
+                        ]);
+                    }
                     $generatedCount++;
                 }
             }
