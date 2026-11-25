@@ -41,6 +41,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'status' => fn () => $request->session()->get('status'),
                 'generated_kode' => fn () => $request->session()->get('generated_kode'),
+                'unlocked_sesi_id' => fn () => $request->session()->get('unlocked_sesi_id'),
             ],
             'tahunAjaranAktif' => fn () => $request->user() && Schema::hasTable('tahun_ajaran')
                 ? TahunAjaran::where('aktif', true)->first(['id', 'nama', 'semester'])

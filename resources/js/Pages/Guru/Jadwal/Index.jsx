@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 const NAMA_HARI = {
@@ -236,13 +236,19 @@ export default function JadwalIndex({
                                             </div>
 
                                             {sesi && (
-                                                <div className="mt-4 pt-3 border-t border-slate-100">
+                                                <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
                                                     <div className="flex items-center justify-between text-xs">
                                                         <span className="text-slate-500">Status Sesi:</span>
                                                         <span className="font-semibold uppercase px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700">
                                                             {sesi.status}
                                                         </span>
                                                     </div>
+                                                    <Link
+                                                        href={route('guru.absen-sesi.show', sesi.id)}
+                                                        className="inline-flex items-center justify-center w-full py-2 px-3 rounded-xl bg-[#143823] hover:bg-[#002114] text-white text-xs font-bold transition-colors"
+                                                    >
+                                                        Buka Presensi Siswa Kelas →
+                                                    </Link>
                                                 </div>
                                             )}
                                         </div>

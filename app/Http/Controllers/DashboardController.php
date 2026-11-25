@@ -294,19 +294,23 @@ class DashboardController extends Controller
                 ->get();
 
             foreach ($activeSlotsToday as $slot) {
-                Sesi::firstOrCreate(
-                    [
+                $exists = Sesi::query()
+                    ->whereDate('tanggal', $todayDate)
+                    ->where('kelas_id', $slot->kelas_id)
+                    ->where('jam_pelajaran_id', $slot->jam_pelajaran_id)
+                    ->exists();
+
+                if (! $exists) {
+                    Sesi::create([
                         'tanggal' => $todayDate,
                         'kelas_id' => $slot->kelas_id,
                         'jam_pelajaran_id' => $slot->jam_pelajaran_id,
-                    ],
-                    [
                         'mapel_id' => $slot->mapel_id,
                         'guru_id' => $slot->guru_id,
                         'slot_id' => $slot->id,
                         'status' => 'terjadwal',
-                    ]
-                );
+                    ]);
+                }
             }
         }
 

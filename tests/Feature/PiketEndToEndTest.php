@@ -2,16 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Models\AbsenSiswa;
 use App\Models\GuruPiket;
 use App\Models\JamPelajaran;
 use App\Models\Kelas;
 use App\Models\KodePengganti;
 use App\Models\Mapel;
 use App\Models\Sesi;
+use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use Carbon\Carbon;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class PiketEndToEndTest extends TestCase
@@ -34,10 +38,12 @@ class PiketEndToEndTest extends TestCase
 
     public function test_full_piket_replacement_and_unlock_lifecycle(): void
     {
+        Queue::fake();
+
         $todayIso = Carbon::now()->dayOfWeekIso;
         $todayDate = Carbon::today()->toDateString();
 
-        // 1. Setup Admin, Guru Pengampu, dan Guru Piket
+        // 1. Setup Admin, Guru Pengampu, Guru Piket, dan Kepsek
         $admin = User::factory()->create([
             'role' => 'admin',
             'aktif' => true,
@@ -46,6 +52,7 @@ class PiketEndToEndTest extends TestCase
         $guruPengampu = User::factory()->create([
             'nama' => 'Ibu Siti Guru Utama',
             'role' => 'guru',
+            'jenis_pegawai' => 'guru',
             'aktif' => true,
             'no_wa' => '081111111111',
         ]);
@@ -55,6 +62,12 @@ class PiketEndToEndTest extends TestCase
             'role' => 'guru_piket',
             'aktif' => true,
             'no_wa' => '08222222222',
+        ]);
+
+        $kepsek = User::factory()->create([
+            'nama' => 'Bapak Kepsek Monitoring',
+            'role' => 'kepsek',
+            'aktif' => true,
         ]);
 
         $tahunAjaran = TahunAjaran::create([
@@ -70,6 +83,22 @@ class PiketEndToEndTest extends TestCase
             'tingkat' => 8,
             'tahun_ajaran_id' => $tahunAjaran->id,
             'wali_kelas_id' => $guruPengampu->id,
+        ]);
+
+        $siswaHadir = Siswa::create([
+            'nis' => '8001',
+            'nama' => 'Andi Pratama',
+            'kelas_id' => $kelas->id,
+            'no_hp_ortu' => '081234567801',
+            'aktif' => true,
+        ]);
+
+        $siswaSakit = Siswa::create([
+            'nis' => '8002',
+            'nama' => 'Bunga Citra',
+            'kelas_id' => $kelas->id,
+            'no_hp_ortu' => '081234567802',
+            'aktif' => true,
         ]);
 
         $jamPelajaran = JamPelajaran::create([
@@ -119,7 +148,7 @@ class PiketEndToEndTest extends TestCase
             ->has('sesiHariIni', 1)
         );
 
-        // LANGKAH 3: Di dashboard Guru Piket, sesi kelas masih terkunci (Task P3)
+        // LANGKAH 3: Di dashboard Guru Piket, sesi kelas masih terkunci & belum bisa diakses di form absen (Task P3)
         $piketInitialResponse = $this->actingAs($guruPiket)->get(route('dashboard'));
         $piketInitialResponse->assertStatus(200);
         $piketInitialResponse->assertInertia(fn ($page) => $page
@@ -130,6 +159,11 @@ class PiketEndToEndTest extends TestCase
             ->where('stats.total_terkunci', 1)
             ->where('stats.total_terbuka', 0)
         );
+
+        // Sebelum klaim kode, guru piket tidak boleh membuka form absen sesi tersebut (403)
+        $this->actingAs($guruPiket)
+            ->get(route('guru.absen-sesi.show', $sesi->id))
+            ->assertStatus(403);
 
         // LANGKAH 4: Guru berhalangan hadir dan men-generate kode unik 6 digit (Task P4)
         $generateCodeResponse = $this->actingAs($guruPengampu)->post(route('sesi.generate-kode', $sesi->id));
@@ -146,6 +180,7 @@ class PiketEndToEndTest extends TestCase
             'kode' => $kodeRecord->kode,
         ]);
         $claimResponse->assertSessionHas('success');
+        $claimResponse->assertSessionHas('unlocked_sesi_id', $sesi->id);
 
         // Status kode menjadi terpakai & tercatat siapa yang mengklaim
         $this->assertDatabaseHas('kode_pengganti', [
@@ -181,5 +216,104 @@ class PiketEndToEndTest extends TestCase
             ->where('sesiHariIni.0.guru_pengganti.id', $guruPiket->id)
             ->where('sesiHariIni.0.guru_pengganti.nama', 'Bapak Budi Guru Piket')
         );
+
+        // LANGKAH 7 (T16 Integrasi T12 -> T10): Guru Piket membuka form absen siswa sebagai guru pengganti
+        $piketAbsenIndex = $this->actingAs($guruPiket)->get(route('guru.absen-sesi.index'));
+        $piketAbsenIndex->assertRedirect(route('guru.absen-sesi.show', $sesi->id));
+
+        $piketAbsenShow = $this->actingAs($guruPiket)->get(route('guru.absen-sesi.show', $sesi->id));
+        $piketAbsenShow->assertStatus(200);
+        $piketAbsenShow->assertInertia(fn ($page) => $page
+            ->component('Guru/AbsenSiswa/Index')
+            ->where('sesi.id', $sesi->id)
+            ->where('sesi.guru_pengganti_id', $guruPiket->id)
+            ->where('sesi.kelas.nama_kelas', 'VIII-A')
+            ->has('siswas', 2)
+        );
+
+        // Guru Piket menyimpan presensi siswa sebagai guru pengganti
+        $storeAbsenResponse = $this->actingAs($guruPiket)->post(route('guru.absen-sesi.store', $sesi->id), [
+            'absen' => [
+                ['siswa_id' => $siswaHadir->id, 'status' => 'H', 'catatan' => ''],
+                ['siswa_id' => $siswaSakit->id, 'status' => 'S', 'catatan' => 'Sakit demam'],
+            ],
+            'jurnal_kbm' => 'KBM tetap berjalan kondusif didampingi Guru Piket.',
+        ]);
+        $storeAbsenResponse->assertSessionHas('success');
+
+        $this->assertDatabaseHas('absen_siswa', [
+            'sesi_id' => $sesi->id,
+            'siswa_id' => $siswaHadir->id,
+            'status' => 'H',
+            'dicatat_oleh' => $guruPiket->id,
+        ]);
+
+        $absenSakit = AbsenSiswa::where('sesi_id', $sesi->id)
+            ->where('siswa_id', $siswaSakit->id)
+            ->first();
+        $this->assertNotNull($absenSakit);
+        $this->assertEquals('S', $absenSakit->status);
+        $this->assertEquals($guruPiket->id, $absenSakit->dicatat_oleh);
+        $this->assertNotNull($absenSakit->konfirmasi_token);
+
+        // LANGKAH 8: Orang tua membuka halaman konfirmasi token publik (T13)
+        $this->get(route('konfirmasi.show', $absenSakit->konfirmasi_token))
+            ->assertStatus(200);
+
+        // LANGKAH 9: Kepsek memantau sesi yang digantikan & rekap absensi siswa (Read-Only, T09 & T15)
+        $this->actingAs($kepsek)
+            ->get(route('dashboard'))
+            ->assertStatus(200)
+            ->assertInertia(fn ($page) => $page
+                ->component('Kepsek/Dashboard')
+                ->where('sesiStats.sesi_digantikan', 1)
+            );
+
+        $this->actingAs($kepsek)
+            ->get(route('kepsek.rekap-absensi.siswa', ['kelas_id' => $kelas->id]))
+            ->assertStatus(200)
+            ->assertInertia(fn ($page) => $page
+                ->component('Kepsek/RekapAbsensi/Siswa')
+                ->where('ringkasanKelas.total_hadir', 1)
+                ->where('ringkasanKelas.total_sakit', 1)
+            );
+
+        // Kepsek tidak boleh menyimpan/mengubah absen siswa (Read-Only Strict)
+        $this->actingAs($kepsek)
+            ->post(route('guru.absen-sesi.store', $sesi->id), [
+                'absen' => [
+                    ['siswa_id' => $siswaHadir->id, 'status' => 'A', 'catatan' => ''],
+                ],
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_database_seeder_populates_complete_demo_data_for_all_roles(): void
+    {
+        // Jalankan seeder 2x untuk memastikan idempotensi
+        $this->seed(DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertGreaterThanOrEqual(24, Siswa::count());
+        $this->assertEquals(4, Kelas::whereHas('tahunAjaran', fn ($q) => $q->where('aktif', true))->count());
+
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $guru = User::where('username', 'guru')->firstOrFail();
+        $piket = User::where('username', 'gurupiket')->firstOrFail();
+        $kepsek = User::where('username', 'kepsek')->firstOrFail();
+
+        // Uji akses end-to-end tiap role menggunakan data hasil seeder
+        $this->actingAs($admin)->get(route('dashboard'))->assertOk();
+        $this->actingAs($admin)->get(route('admin.rekap-absensi.siswa'))->assertOk();
+
+        $this->actingAs($guru)->get(route('dashboard'))->assertOk();
+        $this->actingAs($guru)->get(route('guru.jadwal.index'))->assertOk();
+        $sesiGuru = Sesi::where('guru_id', $guru->id)->firstOrFail();
+        $this->actingAs($guru)->get(route('guru.absen-sesi.show', $sesiGuru->id))->assertOk();
+
+        $this->actingAs($piket)->get(route('dashboard'))->assertOk();
+
+        $this->actingAs($kepsek)->get(route('dashboard'))->assertOk();
+        $this->actingAs($kepsek)->get(route('kepsek.rekap-absensi.siswa'))->assertOk();
     }
 }

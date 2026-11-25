@@ -176,7 +176,10 @@ class KodePenggantiController extends Controller
             'status' => 'digantikan',
         ]);
 
-        return back()->with('success', "Sesi Kelas {$sesi->kelas?->nama} (Mapel: {$sesi->mapel?->nama}) berhasil dibuka! Anda tercatat sebagai guru pengganti.");
+        return back()->with([
+            'success' => "Sesi Kelas {$sesi->kelas?->nama} (Mapel: {$sesi->mapel?->nama}) berhasil dibuka! Anda tercatat sebagai guru pengganti.",
+            'unlocked_sesi_id' => $sesi->id,
+        ]);
     }
 
     protected function claimThrottleKey(Request $request): string

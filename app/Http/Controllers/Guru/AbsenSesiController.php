@@ -5,7 +5,11 @@ namespace App\Http\Controllers\Guru;
 use App\Events\AbsenSiswaRecorded;
 use App\Http\Controllers\Controller;
 use App\Models\AbsenSiswa;
+use App\Models\HariLibur;
+use App\Models\JadwalSlot;
 use App\Models\Sesi;
+use App\Models\TahunAjaran;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -15,10 +19,43 @@ class AbsenSesiController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $today = now()->toDateString();
+        $today = Carbon::today()->toDateString();
+        $todayIso = Carbon::now()->dayOfWeekIso;
 
-        $sesi = Sesi::with(['kelas', 'mapel', 'jamPelajaran'])
-            ->where('tanggal', $today)
+        if ($todayIso >= 1 && $todayIso <= 5 && ! HariLibur::whereDate('tanggal', $today)->exists()) {
+            $tahunAjaranAktif = TahunAjaran::where('aktif', true)->first(['id']);
+            $activeSlotsToday = JadwalSlot::query()
+                ->where('hari', $todayIso)
+                ->where('guru_id', $user->id)
+                ->when($tahunAjaranAktif, function ($q) use ($tahunAjaranAktif) {
+                    $q->whereHas('kelas', fn ($k) => $k->where('tahun_ajaran_id', $tahunAjaranAktif->id));
+                })
+                ->whereHas('versi', fn ($v) => $v->where('status', 'aktif'))
+                ->get();
+
+            foreach ($activeSlotsToday as $slot) {
+                $exists = Sesi::query()
+                    ->whereDate('tanggal', $today)
+                    ->where('kelas_id', $slot->kelas_id)
+                    ->where('jam_pelajaran_id', $slot->jam_pelajaran_id)
+                    ->exists();
+
+                if (! $exists) {
+                    Sesi::create([
+                        'tanggal' => $today,
+                        'kelas_id' => $slot->kelas_id,
+                        'jam_pelajaran_id' => $slot->jam_pelajaran_id,
+                        'mapel_id' => $slot->mapel_id,
+                        'guru_id' => $slot->guru_id,
+                        'slot_id' => $slot->id,
+                        'status' => 'terjadwal',
+                    ]);
+                }
+            }
+        }
+
+        $sesi = Sesi::with(['kelas', 'mapel', 'jamPelajaran', 'guru', 'guruPengganti'])
+            ->whereDate('tanggal', $today)
             ->where(function ($q) use ($user) {
                 $q->where('guru_id', $user->id)
                     ->orWhere('guru_pengganti_id', $user->id);
@@ -44,11 +81,23 @@ class AbsenSesiController extends Controller
         $user = $request->user();
         $this->authorize($user, $sesi);
 
-        $sesi->load(['kelas', 'mapel', 'jamPelajaran', 'guru', 'guruPengganti']);
+        $sesi->load([
+            'kelas',
+            'mapel',
+            'jamPelajaran',
+            'guru:id,nama,username',
+            'guruPengganti:id,nama,username',
+            'slot',
+            'kodePengganti' => function ($q) {
+                $q->where('status', 'aktif')
+                    ->where('berlaku_sampai', '>', Carbon::now())
+                    ->latest();
+            },
+        ]);
 
-        $today = now()->toDateString();
-        $sesiBerjalan = Sesi::with(['kelas', 'mapel', 'jamPelajaran'])
-            ->where('tanggal', $today)
+        $today = $sesi->tanggal ? $sesi->tanggal->toDateString() : Carbon::today()->toDateString();
+        $sesiBerjalan = Sesi::with(['kelas', 'mapel', 'jamPelajaran', 'guru:id,nama,username', 'guruPengganti:id,nama,username', 'slot'])
+            ->whereDate('tanggal', $today)
             ->where(function ($q) use ($user) {
                 $q->where('guru_id', $user->id)
                     ->orWhere('guru_pengganti_id', $user->id);
@@ -134,11 +183,11 @@ class AbsenSesiController extends Controller
 
     private function authorize($user, Sesi $sesi): void
     {
-        $isAdmin = in_array($user->role, ['admin', 'kepsek']);
+        $isAdmin = $user->role === 'admin';
         $isGuru = $user->id === $sesi->guru_id;
         $isPengganti = $user->id === $sesi->guru_pengganti_id;
 
-        if (!$isAdmin && !$isGuru && !$isPengganti) {
+        if (! $isAdmin && ! $isGuru && ! $isPengganti) {
             abort(403, 'Anda tidak berwenang mengisi presensi sesi ini.');
         }
     }
